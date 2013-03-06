@@ -78,9 +78,23 @@ end
 
 
 iteration_no = 0;
+touched = struct('IDs',{});
 while iteration_no < max_iter
     iteration_no = iteration_no + 1;
-
+    
+    %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+    % Remove duplicates
+    % (only those that could not be fusioned by convolutive ICA)
+    %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+    
+    if ~isempty(touched)
+        %NOT YET IMPLEMENTED:
+        %IDs_to_keep = check_for_duplicates(PARAMETERS);
+        %X = X(IDs_to_keep,:);
+        %A = A(:,IDs_to_keep,:);
+    end
+        
+    
     %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
     % Choose channels based on skewness and presence of peaks
     %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
@@ -183,17 +197,18 @@ while iteration_no < max_iter
                     A(:,cl_i,:) = 0;
                     %the following could be vectorized:
                     for tau = 1:L+1
-                        for i = 1:tau
-                            j = tau + 1 - i;
+                        for k = 1:tau
+                            j = tau + 1 - k;
                             A(:,cl_i,tau) = A(:,cl_i,tau) + ...
-                                            A_old(:,:,i)*A_new(:,:,j);
+                                            A_old(:,:,k)*A_new(:,:,j);
                         end
                     end
                     X(cl_i,:) = cicaarprosep(invA0,Atau,X(cl_i,:));
-                    %X = cicaarprosep(pinv(A(:,:,1)),A(:,:,2:end),X_org);    
+                    %X = cicaarprosep(pinv(A(:,:,1)),A(:,:,2:end),X_org); 
+                    touched(i).IDs = cl_i;
                 end
                 
-            case 'pair'
+            case 'pair' %maybe conceptually wrong and should be removed
                 [I,J] = find(abs(SM) >= min_corr);
                 M_pairs = length(I);
                 invA0_tmp = eye(size(X,1),size(X,1));
@@ -211,12 +226,13 @@ while iteration_no < max_iter
                     A_old = A(:,[I(i) J(i)],:);
                     A(:,[I(i) J(i)],:) = 0;
                     for tau = 1:L+1
-                        for i = 1:tau
-                            j = tau + 1 - i;
+                        for k = 1:tau
+                            j = tau + 1 - k;
                             A(:,[I(i) J(i)],tau) = A(:,[I(i) J(i)],tau)+...
-                                                 A_old(:,:,i)*A_new(:,:,j);
+                                                 A_old(:,:,k)*A_new(:,:,j);
                         end
                     end
+                    touched(i).IDs = [I(i) J(i)];
                 end
                 %X = cicaarprosep(pinv(A(:,:,1)),A(:,:,2:end),X_org);
                 %the following unmixing was observed to lead to
