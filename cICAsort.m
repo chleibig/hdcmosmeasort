@@ -10,9 +10,9 @@ function [ X_ROI,sensor_rows_ROI, sensor_cols_ROI, units, S_cica ] = ...
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 
 %Dataset specs:
-sr = 11.49; %sampling rate in kHz
+sr = 22.9789; %sampling rate in kHz
 d_row = 7.4; %neighbouring sensor distance in \mum
-d_col = 7.4;
+d_col = 14.8;
 
 %ROI identification:
 thr_factor = 1;
@@ -22,8 +22,8 @@ nonlinearity = 'pow3';
 approach_fastICA = 'defl';
 
 %convolutive ICA:
-L = 7;
-M = 0;
+L = 8;
+M = 12;
 plotting = 1;
 min_skewness = 0.2;
 d_max = 1000; %maximal distance in \mum for extrema of component filters
@@ -34,7 +34,13 @@ max_iter = 5;
 min_no_peaks = 2;
 maxlags = 10;
 
+%duplicates:
+t_s = 0.5; %ms
+t_jitter = 0.5; %ms
+coin_thr = 0.5; %fraction
+
 t_total_1 = clock;
+
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 % ROI identification
@@ -68,7 +74,8 @@ t1 = clock;
     'M',M,'maxlags',maxlags,...
     'plotting',plotting,'min_skewness',min_skewness,'min_corr',min_corr,...
     'approach',approach,'max_cluster_size',max_cluster_size,...
-    'max_iter',max_iter,'min_no_peaks',min_no_peaks);
+    'max_iter',max_iter,'min_no_peaks',min_no_peaks,...
+    't_s',t_s,'t_jitter',t_jitter, 'coin_thr',coin_thr);
 t2 = clock;
 fprintf('convolutive ICA step performed in %g seconds\n',etime(t2,t1));
 
@@ -78,7 +85,7 @@ fprintf('convolutive ICA step performed in %g seconds\n',etime(t2,t1));
 
 t1 = clock;
 
-[units] = SpikeTimeIdentification(S_cica, sr);
+[units] = SpikeTimeIdentification(S_cica, sr,1);
 
 t2 = clock;
 fprintf('Spike time identification and clustering with KlustaKwik\n');
@@ -101,7 +108,7 @@ end
 % Save results
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
     
-SaveResults(filename, units);   
+%SaveResults(filename, units);   
     
 t_total_2 = clock;
 fprintf('Total cICAsort performed in %g seconds\n',etime(t_total_2,t_total_1));

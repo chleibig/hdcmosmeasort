@@ -23,6 +23,10 @@ max_cluster_size = 2;
 max_iter = 5;
 maxlags = ceil(sr);
 min_no_peaks = 2;
+t_s = 0.5;
+t_jitter = 0.5;
+coin_thr = 0.5;
+
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 % Optional arguments
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
@@ -36,33 +40,39 @@ else
     end
     % change the value of parameter
     switch varargin{i}
-     case 'maxlags'
-      maxlags = (varargin{i+1});
-     case 'plotting'
-      plotting = (varargin{i+1});
-     case  'min_skewness'
-      min_skewness = (varargin{i+1});
-     case 'min_corr'
-      min_corr = (varargin{i+1});
-     case 'M'
-      M = (varargin{i+1});
-     case 'approach' 
-      approach = (varargin{i+1});
-      if ~(strcmp(approach,'pair') || strcmp(approach,'cluster'))
-          error(['Invalid value for approach: ''' approach '''']);
-      end
-     case 'max_cluster_size'
-         max_cluster_size = (varargin{i+1});
-     case 'max_iter'
-         max_iter = (varargin{i+1});
-     case 'sr'
-         sr = (varargin{i+1});
-     case 'min_no_peaks'
-         min_no_peaks = (varargin{i+1});
-     otherwise
-      % Hmmm, something wrong with the parameter string
-      error(['Unrecognized parameter: ''' varargin{i} '''']);
-     end;
+        case 'maxlags'
+            maxlags = (varargin{i+1});
+        case 'plotting'
+            plotting = (varargin{i+1});
+        case  'min_skewness'
+            min_skewness = (varargin{i+1});
+        case 'min_corr'
+            min_corr = (varargin{i+1});
+        case 'M'
+            M = (varargin{i+1});
+        case 'approach'
+            approach = (varargin{i+1});
+            if ~(strcmp(approach,'pair') || strcmp(approach,'cluster'))
+                error(['Invalid value for approach: ''' approach '''']);
+            end
+        case 'max_cluster_size'
+            max_cluster_size = (varargin{i+1});
+        case 'max_iter'
+            max_iter = (varargin{i+1});
+        case 'sr'
+            sr = (varargin{i+1});
+        case 'min_no_peaks'
+            min_no_peaks = (varargin{i+1});
+        case 't_s'
+            t_s = (varargin{i+1});
+        case 't_jitter'
+            t_jitter = (varargin{i+1});
+        case 'coin_thr'
+            coin_thr = (varargin{i+1});
+        otherwise
+            % Hmmm, something wrong with the parameter string
+            error(['Unrecognized parameter: ''' varargin{i} '''']);
+    end;
   end;
 end
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
@@ -82,18 +92,7 @@ touched = struct('IDs',{});
 while iteration_no < max_iter
     iteration_no = iteration_no + 1;
     
-    %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-    % Remove duplicates
-    % (only those that could not be fusioned by convolutive ICA)
-    %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
     
-    if ~isempty(touched)
-        %NOT YET IMPLEMENTED:
-        %IDs_to_keep = check_for_duplicates(PARAMETERS);
-        %X = X(IDs_to_keep,:);
-        %A = A(:,IDs_to_keep,:);
-    end
-        
     
     %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
     % Choose channels based on skewness and presence of peaks
@@ -114,8 +113,23 @@ while iteration_no < max_iter
     %sign-correction <-> does this affect convolutive ICA step?!
     % sign_corr = skewn(mask) > 0;
     % X(sign_corr,:) = -1 * X(sign_corr,:);
-
-
+    
+    
+    
+    %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+    % Remove duplicates
+    % (only those that could not be fusioned by convolutive ICA)
+    %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+    
+    to_skip = [];
+    for i=1:length(touched)
+        [I,J] = get_duplicate(X(touched(i).IDs,:),sr,t_s,t_jitter, coin_thr);
+        to_skip = [to_skip;touched(i).IDs(I)];
+    end
+    touched = [];
+    X(to_skip,:) = [];
+    A(:,to_skip,:) = [];
+    
     
     %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
     % Estimate crosstalk
