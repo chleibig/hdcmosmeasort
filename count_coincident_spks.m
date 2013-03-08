@@ -16,6 +16,8 @@ function [n_coin] = count_coincident_spks(t1,t2,sr,t_s,t_jitter)
 % Ref.: Felix Franke, 2012, PhD Thesis, chapter 7.1
 
 
+if isempty(t1) || isempty(t2); n_coin = 0; return ;end
+
 %shift spike train by maximally t_s:
 edges = min(t1(1),t2(1)):1/sr:max(t1(end),t2(end));
 t1_binned = histc(t1,edges);

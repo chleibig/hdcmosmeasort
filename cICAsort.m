@@ -19,7 +19,8 @@ thr_factor = 1;
 
 %fastICA:
 nonlinearity = 'pow3';
-approach_fastICA = 'defl';
+approach_fastICA = 'symm';
+numOfIC = 10;
 
 %convolutive ICA:
 L = 8;
@@ -29,7 +30,7 @@ min_skewness = 0.2;
 d_max = 1000; %maximal distance in \mum for extrema of component filters
 min_corr = 0.2;
 approach = 'cluster';
-max_cluster_size = 3;
+max_cluster_size = 2;
 max_iter = 5;
 min_no_peaks = 2;
 maxlags = 10;
@@ -42,11 +43,31 @@ coin_thr = 0.5; %fraction
 t_total_1 = clock;
 
 
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+% Preprocessing - bandpass
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+
+%
+tic;
+data = double(data);
+Wp = [ 0.3  3] * 2 / sr;
+Ws = [ 0.1 min(5,(sr/2 - 0.1))] * 2 / sr;
+[N,Wn] = buttord( Wp, Ws, 3, 80);
+[B,A] = butter(N,Wn);
+[N_ROW,N_COL,N_SAMPLES] = size(data);
+data = reshape(data, [N_ROW*N_COL N_SAMPLES]);
+data_filt = cell2mat(cellfun(@(x) filtfilt(B,A,x),...
+                            num2cell(data,2),'UniformOutput',0));
+%Due to shape expected by ROIIdentification:
+data_filt = squeeze(reshape(data_filt, [N_ROW N_COL N_SAMPLES]));
+toc;
+
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 % ROI identification
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 
-[ X_ROI, sensor_rows_ROI, sensor_cols_ROI ] = ROIIdentification(data,...
+[ X_ROI, sensor_rows_ROI, sensor_cols_ROI ] = ROIIdentification(data_filt,...
                                       sensor_rows, sensor_cols, thr_factor);
 
 
@@ -56,7 +77,7 @@ t_total_1 = clock;
 
 t1 = clock;
 [S_ica, A, W] = fastica(X_ROI,'g',nonlinearity,...
-                        'approach',approach_fastICA);
+                        'approach',approach_fastICA,'numOfIC',numOfIC);
 t2 = clock;
 fprintf('fastICA step performed in %g seconds\n',etime(t2,t1));
 
