@@ -17,10 +17,6 @@ function [I,J] = get_duplicate(X,sr,t_s,t_jitter, coin_thr)
 
 % Author: Christian Leibig, 08.03.13
 
-
-t_s = 0.5; %maximal shift between spike trains in ms
-t_jitter = 0.5; %maximal jitter for spike correspondence in ms
-sr = 8.5383;
 [units] = SpikeTimeIdentification(X, sr, 0);
 N = length(units);
 coin_frac = zeros(N,N);

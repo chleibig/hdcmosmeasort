@@ -95,8 +95,12 @@ while iteration_no < max_iter
     
     
     %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-    % Choose channels based on skewness and presence of peaks
+    % Remove components    
     %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+    
+    
+    % 1. set mask based on skewness and presence of peaks criteria
+    
     skewn = skewness(X');
     %assess number of peaks in each component:
     n_peaks = zeros(1,size(X,1));
@@ -108,27 +112,26 @@ while iteration_no < max_iter
     mask = (abs(skewn) > min_skewness) & (n_peaks >= min_no_peaks);
     fprintf('%g channels from the %g input channels will be kept...\n',...
         length(nonzeros(mask)),size(X,1));
-    X = X(mask,:);
-    A = A(:,mask,:);
-    %sign-correction <-> does this affect convolutive ICA step?!
-    % sign_corr = skewn(mask) > 0;
-    % X(sign_corr,:) = -1 * X(sign_corr,:);
     
     
     
-    %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-    % Remove duplicates
-    % (only those that could not be fusioned by convolutive ICA)
-    %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
     
+    % 2. get duplicates and adapt mask
+    % (only those that could not be fused by convolutive ICA and only the
+    % strongest per cluster)
+     
     to_skip = [];
     for i=1:length(touched)
         [I,J] = get_duplicate(X(touched(i).IDs,:),sr,t_s,t_jitter, coin_thr);
         to_skip = [to_skip;touched(i).IDs(I)];
     end
     touched = [];
-    X(to_skip,:) = [];
-    A(:,to_skip,:) = [];
+    mask(to_skip) = 0;
+    
+    % 3. remove components
+    
+    X = X(mask,:);
+    A = A(:,mask,:);
     
     
     %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
