@@ -1,21 +1,34 @@
 function [ X_ROI,sensor_rows_ROI, sensor_cols_ROI, units, S_cica ] = ...
-                       cICAsort( data , sensor_rows, sensor_cols, filename)
+                       cICAsort(filename)
 %cICAsort perform spike sorting of high density array data
 %based on convolutive ICA
 
 % created by Christian Leibig 12.02.13
 
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+% Load data
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+
+dataset = hdf5load(filename);
+data = permute(dataset.Data, [3 2 1]);
+if ~strcmp(class(data),'double');data = double(data);end;
+sensor_rows = dataset.Metadata.RowList;
+sensor_cols = dataset.Metadata.ColumnList;
+sr = length(dataset.Metadata.FrameStartTimes)/...
+    dataset.Metadata.FrameStartTimes(end);%in kHz
+d_row = double(dataset.Metadata.RowList(2) - dataset.Metadata.RowList(1)) * 7.4;
+d_col = double(dataset.Metadata.ColumnList(2) - dataset.Metadata.ColumnList(1)) * 7.4;
+
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 % Default arguments
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 
-%Dataset specs:
-sr = 22.9789; %sampling rate in kHz
-d_row = 7.4; %neighbouring sensor distance in \mum
-d_col = 14.8;
-
 %ROI identification:
-thr_factor = 1;
+options.thr_factor = 10.95;
+options.n_rows = 5;
+options.n_cols = 3;
+options.n_frames = 3;
 
 %fastICA:
 nonlinearity = 'pow3';
@@ -68,7 +81,7 @@ t_total_1 = clock;
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 
 [ X_ROI, sensor_rows_ROI, sensor_cols_ROI ] = ROIIdentification(data,...
-                                      sensor_rows, sensor_cols, thr_factor);
+                                       sensor_rows, sensor_cols,options);
 
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
@@ -128,8 +141,9 @@ end
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 % Save results
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-    
-%SaveResults(filename, units);   
+
+%results_filename = strcat(filename,'.basic_events');
+%SaveResults(results_filename, units);   
     
 t_total_2 = clock;
 fprintf('Total cICAsort performed in %g seconds\n',etime(t_total_2,t_total_1));
