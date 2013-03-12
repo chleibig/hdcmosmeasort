@@ -49,25 +49,25 @@ t_total_1 = clock;
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 
 %
-tic;
-data = double(data);
-Wp = [ 0.3  3] * 2 / sr;
-Ws = [ 0.1 min(5,(sr/2 - 0.1))] * 2 / sr;
-[N,Wn] = buttord( Wp, Ws, 3, 80);
-[B,A] = butter(N,Wn);
-[N_ROW,N_COL,N_SAMPLES] = size(data);
-data = reshape(data, [N_ROW*N_COL N_SAMPLES]);
-data_filt = cell2mat(cellfun(@(x) filtfilt(B,A,x),...
-                            num2cell(data,2),'UniformOutput',0));
-%Due to shape expected by ROIIdentification:
-data_filt = squeeze(reshape(data_filt, [N_ROW N_COL N_SAMPLES]));
-toc;
+% tic;
+% data = double(data);
+% Wp = [ 0.3  3] * 2 / sr;
+% Ws = [ 0.1 min(5,(sr/2 - 0.1))] * 2 / sr;
+% [N,Wn] = buttord( Wp, [.001 .999], 3, 10);
+% [B,A] = butter(N,Wn);
+% [N_ROW,N_COL,N_SAMPLES] = size(data);
+% data = reshape(data, [N_ROW*N_COL N_SAMPLES]);
+% data_filt = cell2mat(cellfun(@(x) filtfilt(B,A,x),...
+%                             num2cell(data,2),'UniformOutput',0));
+% %Due to shape expected by ROIIdentification:
+% data_filt = squeeze(reshape(data_filt, [N_ROW N_COL N_SAMPLES]));
+% toc;
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 % ROI identification
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 
-[ X_ROI, sensor_rows_ROI, sensor_cols_ROI ] = ROIIdentification(data_filt,...
+[ X_ROI, sensor_rows_ROI, sensor_cols_ROI ] = ROIIdentification(data,...
                                       sensor_rows, sensor_cols, thr_factor);
 
 

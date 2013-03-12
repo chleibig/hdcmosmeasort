@@ -36,6 +36,7 @@ for i=1:dims;
     else
         units(i).time = [];
         units(i).amplitude = [];
+    
     end
 end
 
