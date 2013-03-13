@@ -1,4 +1,4 @@
-function [S_cica, A_tau] = ConvolutiveICA(X,L,A,...
+function [S_cica, A_tau, S_noise, A_noise] = ConvolutiveICA(X,L,A,...
                                           sr,d_row,d_col,N_row,N_col,...
                                           d_max,varargin)
 %Documentation goes here ..................
@@ -89,6 +89,7 @@ end
 
 iteration_no = 0;
 touched = struct('IDs',{});
+S_noise = [];A_noise = [];
 while iteration_no < max_iter
     iteration_no = iteration_no + 1;
     
@@ -109,30 +110,48 @@ while iteration_no < max_iter
         5*median(abs(X(i,:))/0.6745),ceil(sr));
         n_peaks(i) = length(peaks);
     end
-    mask = (abs(skewn) > min_skewness) & (n_peaks >= min_no_peaks);
+    keep = (abs(skewn) > min_skewness) & (n_peaks >= min_no_peaks);
     fprintf('%g channels from the %g input channels will be kept...\n',...
-        length(nonzeros(mask)),size(X,1));
+        length(nonzeros(keep)),size(X,1));
+       
+%     % 2. get duplicates and adapt keep
+%     % (only those that could not be fused by convolutive ICA and only the
+%     % strongest per cluster)
+%      
+%     to_skip = [];
+%     for i=1:length(touched)
+%         [I,J] = get_duplicate(X(touched(i).IDs,:),sr,t_s,t_jitter, coin_thr);
+%         to_skip = [to_skip;touched(i).IDs(I)];
+%     end
+%     touched = [];
+%     keep(to_skip) = 0;
+%     
+    % 2. remove components and store them away:
+    S_noise = [S_noise;X(~keep,:)];
+    A_noise = cat(2,A_noise,A(:,~keep,:));
+    X = X(keep,:);
+    A = A(:,keep,:);
     
+    % 3. Adapt touched combination indices
     
+    %touched is a struct array with touched(i).IDs containing those ID 
+    %combinations that were already processed with convolutive ICA and need
+    %not be touched again. When e.g. a cICA component is skipped (due to
+    %noise) it makes sense to touch the remaining combination j again because
+    %it might have absorbed signal energy from the skipped component(s).
+    %hence the respective entry touched(j).IDs is removed.
     
-    
-    % 2. get duplicates and adapt mask
-    % (only those that could not be fused by convolutive ICA and only the
-    % strongest per cluster)
-     
-    to_skip = [];
+    %skipped IDs:
+    delIDs = find(~keep);   
+    %keep only combinations for which no member was deleted:
+    touched = touched(cellfun(@(x) ~any(ismember(x,delIDs)),{touched.IDs}));
+    %adapt remaining indices:
     for i=1:length(touched)
-        [I,J] = get_duplicate(X(touched(i).IDs,:),sr,t_s,t_jitter, coin_thr);
-        to_skip = [to_skip;touched(i).IDs(I)];
+        for j=1:length(touched(i).IDs)
+            oldID = touched(i).IDs(j);
+            touched(i).IDs(j) = oldID - nnz(delIDs < oldID);
+        end
     end
-    touched = [];
-    mask(to_skip) = 0;
-    
-    % 3. remove components
-    
-    X = X(mask,:);
-    A = A(:,mask,:);
-    
     
     %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
     % Estimate crosstalk
@@ -152,12 +171,69 @@ while iteration_no < max_iter
     fprintf('Identified %g clusters showing crosstalk.\n',...
         length(nonzeros(counts - 1)));
     fprintf('The largest cluster contains %g channels.\n',max(counts));
-    fprintf('Clusters with more than %g channels will\n',max_cluster_size);
-    fprintf('be tried to be diminished by unmixing subclusters first.\n');
-    %cluster_ids = find(counts>=2 & counts<=max_cluster_size);
+    %care only about clusters that have more than one member:
     cluster_ids = find(counts>=2);
-    N_clusters = length(cluster_ids);
+    %N_clusters = length(cluster_ids);
 
+    
+    %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+    % Reduce cluster size
+    %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+    
+    %Idea: if maximum cluster size (due to computational load) is exceeded
+    %unmix subcluster only, this is independent from all other clusters, 
+    %within each bigger cluster, we can only unmix the remaining components
+    %in a sequential manner (not in parallel); idea: increase
+    %minimum similarity until maximum sub cluster size <= max_cluster_size
+    
+    fprintf('Only the %g channels showing the strongest\n',max_cluster_size);
+    fprintf('crosstalk within each cluster will be unmixed.\n');
+    
+    for i = 1:length(cluster_ids)
+        cl_i = find(T == cluster_ids(i))';
+        if (length(cl_i) > max_cluster_size)
+            d_sm = 0;
+            sm_cl_i = SM(cl_i,cl_i);
+            cl_i_tmp = cl_i;
+            while length(cl_i_tmp) > max_cluster_size
+                d_sm = d_sm + 0.01;
+                t = hierarchical_clustering(sm_cl_i,...
+                    min_corr + d_sm,'plotting',0);
+                t_counts = arrayfun(@(x)(sum(t == x)),1:max(t));
+                %take the biggest remaining subcluster:
+                [counts_max,ind_max] = max(t_counts);
+                cl_i_tmp = cl_i(t == ind_max);
+                if length(cl_i_tmp) <= max_cluster_size
+                    cl_i = cl_i_tmp;
+                end
+            end
+            clear cl_i_tmp;
+            %cl_i is the subcluster to unmix, put the remaining components
+            %in a new cluster:
+            T(setdiff(find(T == cluster_ids(i)),cl_i)) = max(T) + 1;
+        end
+    end
+    
+    %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+    % Skip clusters that were already touched
+    %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+    
+    %all clusters have to be compared against all touched combinations
+    %for equality:
+    equality = zeros(length(cluster_ids),length(touched));
+    for i = 1:length(cluster_ids)
+        for j = 1:length(touched)
+            c = find(T == cluster_ids(i));
+            equality(i,j) = isequal(sort(c(:)),sort(touched(j).IDs(:)));
+        end
+    end
+    cluster_ids = cluster_ids(~any(equality'));
+     
+    
+    %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+    % Crosstalk before cICA step
+    %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+    
     if plotting
         %Crosstalk
         figure;title('Clusterwise crosstalk');
@@ -166,42 +242,42 @@ while iteration_no < max_iter
             subplot(pltsize,pltsize,i);plot(X(find(T == i),:)');
         end
     end
-
+    
     %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
     % Convolutive ICA
     %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 
-    if N_clusters > 0 && iteration_no < max_iter
+    if ~isempty(cluster_ids) && iteration_no < max_iter
         fprintf('Iteration %g...\n',iteration_no);
         switch approach
             case 'cluster'
-                for i=1:N_clusters
+                for i=1:length(cluster_ids)
                     fprintf('CICAAR for unmixing cluster %g,',i);
                     fprintf(' containing channels:\n');
                     cl_i = find(T == cluster_ids(i))'
-                    d_sm = 0;
-                    sm_cl_i = SM(cl_i,cl_i);
-                    cl_i_tmp = cl_i;
-                    while length(cl_i_tmp) > max_cluster_size
-                        %unmix subcluster only, this is independent from 
-                        %all other clusters, within cluster, we have to 
-                        %perform the next step sequentially; idea: increase
-                        %minimum similarity until maximum sub cluster size 
-                        %<= max_cluster_size
-                        d_sm = d_sm + 0.01;
-                        t = hierarchical_clustering(sm_cl_i,...
-                            min_corr + d_sm,'plotting',0);
-                        t_counts = arrayfun(@(x)(sum(t == x)),1:max(t));
-                        %take the biggest remaining subcluster:
-                        [counts_max,ind_max] = max(t_counts);
-                        cl_i_tmp = cl_i(t == ind_max);
-                        if length(cl_i_tmp) <= max_cluster_size
-                            fprintf('Because maximum cluster size is ');
-                            fprintf('exceeded, only unmix components:\n');
-                            cl_i = cl_i_tmp
-                        end
-                    end
-                    clear cl_i_tmp;
+%                     d_sm = 0;
+%                     sm_cl_i = SM(cl_i,cl_i);
+%                     cl_i_tmp = cl_i;
+%                     while length(cl_i_tmp) > max_cluster_size
+%                         %unmix subcluster only, this is independent from 
+%                         %all other clusters, within cluster, we have to 
+%                         %perform the next step sequentially; idea: increase
+%                         %minimum similarity until maximum sub cluster size 
+%                         %<= max_cluster_size
+%                         d_sm = d_sm + 0.01;
+%                         t = hierarchical_clustering(sm_cl_i,...
+%                             min_corr + d_sm,'plotting',0);
+%                         t_counts = arrayfun(@(x)(sum(t == x)),1:max(t));
+%                         %take the biggest remaining subcluster:
+%                         [counts_max,ind_max] = max(t_counts);
+%                         cl_i_tmp = cl_i(t == ind_max);
+%                         if length(cl_i_tmp) <= max_cluster_size
+%                             fprintf('Because maximum cluster size is ');
+%                             fprintf('exceeded, only unmix components:\n');
+%                             cl_i = cl_i_tmp
+%                         end
+%                     end
+%                     clear cl_i_tmp;
 
                     %this is the most time consuming step:
                     tic;
@@ -222,7 +298,9 @@ while iteration_no < max_iter
                     end
                     X(cl_i,:) = cicaarprosep(invA0,Atau,X(cl_i,:));
                     %X = cicaarprosep(pinv(A(:,:,1)),A(:,:,2:end),X_org); 
-                    touched(i).IDs = cl_i;
+                    %append current cluster to list of touched component
+                    %combinations:
+                    touched(length(touched)+1).IDs = cl_i;
                 end
                 
             case 'pair' %maybe conceptually wrong and should be removed
