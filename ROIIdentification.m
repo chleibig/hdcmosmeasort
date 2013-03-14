@@ -54,6 +54,8 @@ else
     %Expensive computation only necessary for multi-dim environment...
     
     V_env = zeros(N_row, N_col, N_frames);
+    
+    fprintf('Performing activity detection in %g-dim environment...',dim_env);
 
     % for loops are comparably performant as vectorization with
     % arrayfun (see below):
@@ -79,8 +81,7 @@ else
 end
 
 t2 = clock;
-fprintf('activity in %g-dim environment detected in %g seconds\n',...
-        dim_env,etime(t2,t1));
+fprintf('...done in %g seconds\n',etime(t2,t1));
 
 activity = sum(tcs,3);
 [rows, cols] = find(activity > 1);

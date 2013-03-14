@@ -173,7 +173,7 @@ while iteration_no < max_iter
     fprintf('The largest cluster contains %g channels.\n',max(counts));
     %care only about clusters that have more than one member:
     cluster_ids = find(counts>=2);
-    %N_clusters = length(cluster_ids);
+    
 
     
     %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
@@ -208,9 +208,15 @@ while iteration_no < max_iter
                 end
             end
             clear cl_i_tmp;
-            %cl_i is the subcluster to unmix, put the remaining components
-            %in a new cluster:
-            T(setdiff(find(T == cluster_ids(i)),cl_i)) = max(T) + 1;
+            %cl_i is the subcluster to unmix, put each of the remaining 
+            %components in a separate cluster (because due to single
+            %linkage clustering they do not necessarily have something in
+            %common):
+            cl_rem = setdiff(find(T == cluster_ids(i)),cl_i);
+            for k = 1:length(cl_rem)
+                T(cl_rem(k)) = max(T) + 1;
+            end
+            clear cl_rem
         end
     end
     
@@ -227,8 +233,28 @@ while iteration_no < max_iter
             equality(i,j) = isequal(sort(c(:)),sort(touched(j).IDs(:)));
         end
     end
-    cluster_ids = cluster_ids(~any(equality'));
-     
+    N_total = length(cluster_ids);
+    cluster_ids_touched = cluster_ids(any(equality'));
+    N_touched = length(cluster_ids_touched);
+    %Put each component of the already touched ones in a separate cluster
+    %to guarantee, that T only contains clusters with more than one member
+    %that we actually want to provide as input to cICA:
+    for i = 1:length(cluster_ids_touched)
+        cl_i_touched = find(T == cluster_ids_touched(i));
+        for k = 1:length(cl_i_touched)
+            T(cl_i_touched(k)) = max(T) + 1;
+        end
+        clear cl_i_touched
+    end
+
+    %cluster_ids = cluster_ids(~any(equality'));
+    
+    fprintf('%g of the %g total clusters were already touched\n',...
+        N_touched,N_total); 
+    
+    % Keep only clusters with more than one member:
+    counts = arrayfun(@(x)(sum(T == x)),1:max(T));
+    cluster_ids = find(counts>=2);
     
     %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
     % Crosstalk before cICA step
@@ -247,6 +273,8 @@ while iteration_no < max_iter
     % Convolutive ICA
     %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 
+    
+    
     if ~isempty(cluster_ids) && iteration_no < max_iter
         fprintf('Iteration %g...\n',iteration_no);
         switch approach
@@ -327,7 +355,7 @@ while iteration_no < max_iter
                                                  A_old(:,:,k)*A_new(:,:,j);
                         end
                     end
-                    touched(i).IDs = [I(i) J(i)];
+                    touched(length(touched)+1).IDs = [I(i) J(i)];
                 end
                 %X = cicaarprosep(pinv(A(:,:,1)),A(:,:,2:end),X_org);
                 %the following unmixing was observed to lead to

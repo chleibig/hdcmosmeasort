@@ -43,8 +43,8 @@ min_skewness = 0.2;
 d_max = 1000; %maximal distance in \mum for extrema of component filters
 min_corr = 0.2;
 approach = 'cluster';
-max_cluster_size = 2;
-max_iter = 5;
+max_cluster_size = 3;
+max_iter = 10;
 min_no_peaks = 2;
 maxlags = 10;
 
