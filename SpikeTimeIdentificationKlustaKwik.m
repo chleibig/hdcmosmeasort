@@ -1,4 +1,4 @@
-function [units] = SpikeTimeIdentification(X, sr, show)
+function [units] = SpikeTimeIdentificationKlustaKwik(X, sr, show)
 % Perform spike time identification on each component
 % of X (dims x samples) individually via 
 % determining threshold crossing events and clustering
