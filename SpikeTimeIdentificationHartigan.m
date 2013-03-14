@@ -43,6 +43,8 @@ for i=1:N_comp;
             title(['dip=',num2str(dip(i),3), ', p=',num2str(p(i),3)]);
         end
         if p(i) < sign_lev %adapt threshold
+            %take the smallest local minimum, which is guaranted as cts is
+            %ordered according to bin_ctrs:
             [val,ind] = min(cts);
             thr_loc_min = bin_ctrs(ind);
             indices = indices(amplitudes < thr_loc_min);

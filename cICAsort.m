@@ -32,8 +32,6 @@ options.n_frames = 3;
 
 %fastICA:
 nonlinearity = 'pow3';
-approach_fastICA = 'symm';
-numOfIC = 10;
 
 %convolutive ICA:
 L = 8;
@@ -43,7 +41,7 @@ min_skewness = 0.2;
 d_max = 1000; %maximal distance in \mum for extrema of component filters
 min_corr = 0.2;
 approach = 'cluster';
-max_cluster_size = 3;
+max_cluster_size = 2;
 max_iter = 10;
 min_no_peaks = 2;
 maxlags = 10;
@@ -88,11 +86,24 @@ t_total_1 = clock;
 % Preprocessing with fastICA
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 
+%extract only as many ICs as possible with fastICA, first determine this
+%number with a deflation approach and then extract the same number
+%of components with the symmetric approach:
+
+t1 = clock;
+fprintf('Estimating number of instantaneous components...\n');
+[S_ica, A, W] = fastica(X_ROI,'g',nonlinearity,...
+                        'approach','defl','verbose','off');
+numOfIC = size(S_ica,1);
+clear S_ica A W
+t2 = clock;
+fprintf('numOfIC = %g, (%g sec. elapsed.)\n',numOfIC,etime(t2,t1));
+
 t1 = clock;
 [S_ica, A, W] = fastica(X_ROI,'g',nonlinearity,...
-                        'approach',approach_fastICA,'numOfIC',numOfIC);
+                        'approach','symm','numOfIC',numOfIC);
 t2 = clock;
-fprintf('fastICA step performed in %g seconds\n',etime(t2,t1));
+fprintf('Symmetric extraction of ICs performed in %g seconds\n',etime(t2,t1));
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 % Convolutive ICA
