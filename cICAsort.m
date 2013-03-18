@@ -17,25 +17,38 @@ sensor_rows = dataset.Metadata.RowList;
 sensor_cols = dataset.Metadata.ColumnList;
 sr = length(dataset.Metadata.FrameStartTimes)/...
     dataset.Metadata.FrameStartTimes(end);%in kHz
-d_row = double(dataset.Metadata.RowList(2) - dataset.Metadata.RowList(1)) * 7.4;
-d_col = double(dataset.Metadata.ColumnList(2) - dataset.Metadata.ColumnList(1)) * 7.4;
+d_sensor_row = double(dataset.Metadata.RowList(2) - dataset.Metadata.RowList(1));
+d_row = d_sensor_row * 7.4;
+d_sensor_col = double(dataset.Metadata.ColumnList(2) - dataset.Metadata.ColumnList(1));
+d_col = d_sensor_col * 7.4;
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 % Default arguments
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 
 %ROI identification:
-options.thr_factor = 10.95;
-options.n_rows = 5;
-options.n_cols = 3;
-options.n_frames = 3;
+if d_sensor_col == 2
+    options.thr_factor = 10.95;
+    options.n_rows = 5;
+    options.n_cols = 3;
+    options.n_frames = 3;
+elseif d_sensor_col == 1
+    options.thr_factor = 9.5;
+    options.n_rows = 3;
+    options.n_cols = 3;
+    options.n_frames = 3;
+end
 
 %fastICA:
 nonlinearity = 'pow3';
 
 %convolutive ICA:
-L = 8;
-M = 12;
+if (round(sr) <= 12) && (round(sr) >= 11)
+    L = 7; M = 0;
+elseif (round(sr) <= 24) && (round(sr) >= 23)
+    L = 8;M = 12;
+end
+
 plotting = 1;
 min_skewness = 0.2;
 d_max = 1000; %maximal distance in \mum for extrema of component filters
@@ -94,7 +107,7 @@ t1 = clock;
 fprintf('Estimating number of instantaneous components...\n');
 [S_ica, A, W] = fastica(X_ROI,'g',nonlinearity,...
                         'approach','defl','verbose','off');
-numOfIC = size(S_ica,1);
+numOfIC = round(0.8 * size(S_ica,1));
 clear S_ica A W
 t2 = clock;
 fprintf('numOfIC = %g, (%g sec. elapsed.)\n',numOfIC,etime(t2,t1));

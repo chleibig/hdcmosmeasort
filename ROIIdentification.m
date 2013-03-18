@@ -84,7 +84,7 @@ t2 = clock;
 fprintf('...done in %g seconds\n',etime(t2,t1));
 
 activity = sum(tcs,3);
-[rows, cols] = find(activity > 1);
+[rows, cols] = find(activity > 2);
 
 %ROI selection in space:
 data_ROI = data(min(rows):max(rows),min(cols):max(cols),:);

@@ -242,7 +242,11 @@ while iteration_no < max_iter
     for i = 1:length(cluster_ids_touched)
         cl_i_touched = find(T == cluster_ids_touched(i));
         for k = 1:length(cl_i_touched)
-            T(cl_i_touched(k)) = max(T) + 1;
+            %if k == 1: the first component is left as only member with
+            %ID T(cl_i_touched(1))
+            if k > 1 
+                T(cl_i_touched(k)) = max(T) + 1;
+            end
         end
         clear cl_i_touched
     end
