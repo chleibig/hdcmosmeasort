@@ -1,4 +1,4 @@
-function [ X_ROI, sensor_rows_ROI, sensor_cols_ROI ] = ROIIdentification(data,...
+function [ X_ROI, sensor_rows_ROI, sensor_cols_ROI, frames_ROI ] = ROIIdentification(data,...
                                        sensor_rows, sensor_cols,options)
 %ROIIDENTIFICATION Extract region of interest from data
 %
@@ -85,6 +85,19 @@ fprintf('...done in %g seconds\n',etime(t2,t1));
 
 activity = sum(tcs,3);
 [rows, cols] = find(activity > 2);
+
+%tcs_per_frame = squeeze(sum(sum(tcs)));
+frames_ROI_tmp = squeeze(sum(sum(tcs))) >= 1;
+%take also horizon frames around tcs into account:
+frames_ROI = false(N_frames,1);
+for i = 2:(options.horizon)+1
+    %shift to the left
+    frames_ROI(1:end-i+1) = frames_ROI(1:end-i+1) | frames_ROI_tmp(i:end);
+    %shift to the right:
+    frames_ROI(i:end) = frames_ROI(i:end) | frames_ROI_tmp(1:end-i+1);
+end
+clear frames_ROI_tmp
+
 
 %ROI selection in space:
 data_ROI = data(min(rows):max(rows),min(cols):max(cols),:);

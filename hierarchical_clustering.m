@@ -35,6 +35,12 @@ else
 end
 
 
+% Check if there is anything to cluster at all:
+if length(SM) < 2
+    fprintf('Warning: Clustering skipped because less than two input identities are provided.\n');
+    T = 1;
+    return
+end
 
 %Conversion of similarity matrix SM to output format of pdist
 % Y = reshape(SM', [1 size(SM,1)*size(SM,2)]);

@@ -38,9 +38,12 @@ elseif d_sensor_col == 1
     options.n_cols = 3;
     options.n_frames = 3;
 end
+options.horizon = floor(sr/2);%~0.5 ms to the left and to the right
+%of detected activity is taken for the temporal ROI
 
 %fastICA:
 nonlinearity = 'pow3';
+allframes = 0;
 
 %convolutive ICA:
 if (round(sr) <= 12) && (round(sr) >= 11)
@@ -91,7 +94,7 @@ t_total_1 = clock;
 % ROI identification
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 
-[ X_ROI, sensor_rows_ROI, sensor_cols_ROI ] = ROIIdentification(data,...
+[ X_ROI, sensor_rows_ROI, sensor_cols_ROI, frames_ROI ] = ROIIdentification(data,...
                                        sensor_rows, sensor_cols,options);
 
 
@@ -102,21 +105,40 @@ t_total_1 = clock;
 %extract only as many ICs as possible with fastICA, first determine this
 %number with a deflation approach and then extract the same number
 %of components with the symmetric approach:
+if allframes
+    t1 = clock;
+    fprintf('Estimating number of instantaneous components...\n');
+    [S_ica, A, W] = fastica(X_ROI,'g',nonlinearity,...
+        'approach','defl','verbose','off');
+    numOfIC = round(0.8 * size(S_ica,1));
+    clear S_ica A W
+    t2 = clock;
+    fprintf('numOfIC = %g, (%g sec. elapsed.)\n',numOfIC,etime(t2,t1));
 
-t1 = clock;
-fprintf('Estimating number of instantaneous components...\n');
-[S_ica, A, W] = fastica(X_ROI,'g',nonlinearity,...
-                        'approach','defl','verbose','off');
-numOfIC = round(0.8 * size(S_ica,1));
-clear S_ica A W
-t2 = clock;
-fprintf('numOfIC = %g, (%g sec. elapsed.)\n',numOfIC,etime(t2,t1));
+    t1 = clock;
+    [S_ica, A, W] = fastica(X_ROI,'g',nonlinearity,...
+        'approach','symm','numOfIC',numOfIC);
+    t2 = clock;
+    fprintf('Symmetric extraction of ICs performed in %g seconds\n',etime(t2,t1));
 
-t1 = clock;
-[S_ica, A, W] = fastica(X_ROI,'g',nonlinearity,...
-                        'approach','symm','numOfIC',numOfIC);
-t2 = clock;
-fprintf('Symmetric extraction of ICs performed in %g seconds\n',etime(t2,t1));
+else
+    t1 = clock;
+    fprintf('Estimating number of instantaneous components...\n');
+    [A, W] = fastica(X_ROI(:,frames_ROI),'g',nonlinearity,...
+        'approach','defl','verbose','off');
+    numOfIC = round(0.8 * size(W,1));
+    clear S_ica A W
+    t2 = clock;
+    fprintf('numOfIC = %g, (%g sec. elapsed.)\n',numOfIC,etime(t2,t1));
+
+    t1 = clock;
+    [A, W] = fastica(X_ROI(:,frames_ROI),'g',nonlinearity,...
+        'approach','symm','numOfIC',numOfIC);
+    S_ica = W*X_ROI;%convolutive ICA has to be performed on contiguous data
+    t2 = clock;
+    fprintf('Symmetric extraction of ICs performed in %g seconds\n',etime(t2,t1));
+end
+
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 % Convolutive ICA
