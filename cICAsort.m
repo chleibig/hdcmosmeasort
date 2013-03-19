@@ -203,7 +203,7 @@ clear data_tmp
 t1 = clock;
 fprintf('Checking for duplicates...\n');
 [duplicate_pairs] = CheckForDuplicates(units, sr, ...
-                                           t_s, t_jitter, coin_thr, sim_thr);
+                                       t_s, t_jitter, coin_thr, sim_thr,1);
 N_dupl = size(duplicate_pairs,1);
 t2 = clock;
 fprintf('found %g duplicates in %g seconds\n',N_dupl,etime(t2,t1));

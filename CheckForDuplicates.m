@@ -1,5 +1,6 @@
 function [duplicate_pairs] = CheckForDuplicates(units, sr, ...
-                                           t_s, t_jitter, coin_thr, sim_thr)
+                                           t_s, t_jitter, coin_thr,...
+                                           sim_thr, interactive)
 %CheckForDuplicates tests units pairwisely whether they
 %are duplicates or not based on the following criteria:
 %
@@ -31,9 +32,55 @@ function [duplicate_pairs] = CheckForDuplicates(units, sr, ...
 %procedure: we check all pairs for the most evident duplicate pair, remove
 %           that one and then do the same for the rest and so on until
 %           we do not find any more duplicate
+%           NOTE: the way it is currently implemented is ordered in the
+%           following fashion: first look for the most coincident pair and
+%           then look for the most similar STA, is the other way
+%           around more preferable? Consider signal-to-noise ratio optimal
+%           scalar-product to assess similarity
 
+if interactive
+   figure; 
+   %this is for debug purposes and to assess suitable threshold parameters
+   N = length(units);
+   coin_frac = zeros(N,N);
+   for i=1:N
+       for j=i+1:N
+           ti = units(i).time;
+           tj = units(j).time;
+           [n_coin] = count_coincident_spks(ti,tj,sr,t_s,t_jitter);
+           coin_frac(i,j) = n_coin/length(ti);
+           coin_frac(j,i) = n_coin/length(tj);
+       end
+   end   
+   subplot(1,2,1);imagesc(coin_frac);colorbar;
+   title('coincident spikes');
+   xlabel('unit index');
+   ylabel('unit index');
+   
+   sim = diag(ones(N,1));
+   for i=1:N
+       for j=i+1:N
+           STAi = units(i).STA(:);
+           STAj = units(j).STA(:);
+           sim(i,j) = abs(STAi'*STAj / sqrt((STAi'*STAi) * (STAj'*STAj)));
+           sim(j,i) = sim(i,j);
+       end
+   end
+   subplot(1,2,2);imagesc(sim);colorbar;
+   title('similarities of STAs');
+   xlabel('unit index');
+   ylabel('unit index');
+   
+   coin_thr = input('Please specify the minimum fraction of coincident spikes for duplicates:');
+   sim_thr = input('Please specify the minimum similarity of STAs for duplicates:');
+   
+   clear N sim coin_frac
+end
+    
+
+units_tmp = units; %units_tmp will be changed
 %store the original indices away:
-for i = 1:length(units); units(i).ID = i; end
+for i = 1:length(units_tmp); units_tmp(i).ID = i; end
 
 duplicate_pairs = [];
 
@@ -47,12 +94,12 @@ while continue_to_check
     % Coincident spikes
     %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 
-    N = length(units);
+    N = length(units_tmp);
     coin_frac = zeros(N,N);
     for i=1:N
         for j=i+1:N
-            ti = units(i).time;
-            tj = units(j).time;
+            ti = units_tmp(i).time;
+            tj = units_tmp(j).time;
             [n_coin] = count_coincident_spks(ti,tj,sr,t_s,t_jitter);
             coin_frac(i,j) = n_coin/length(ti);
             coin_frac(j,i) = n_coin/length(tj);
@@ -73,14 +120,14 @@ while continue_to_check
         %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
         % STA similarities
         %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-        STAi = units(I).STA(:);
-        STAj = units(J).STA(:);
+        STAi = units_tmp(I).STA(:);
+        STAj = units_tmp(J).STA(:);
         sim = abs(STAi'*STAj / sqrt((STAi'*STAi) * (STAj'*STAj)));
         if sim >= sim_thr
             %A duplicate pair is found
             duplicate_pairs = [duplicate_pairs;...
-                              units(I).ID units(J).ID];
-            units(I) = [];%exclude that from further checks
+                              units_tmp(I).ID units_tmp(J).ID];
+            units_tmp(I) = [];%exclude that from further checks
             continue_to_check = true;
         else
             %no (more) duplicate is found
@@ -89,6 +136,5 @@ while continue_to_check
     
     end    
 end
-
 
 end
