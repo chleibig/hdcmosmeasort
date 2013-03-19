@@ -31,10 +31,10 @@ for i = 1:N_spks
 end
 
 STA = squeeze(mean(spks,1));
-%Get position of maximum:
-[row_max,col_max] = find(max(abs(STA),[],3) == max(max(max(abs(STA)))));
 
 if show
+    %Get position of maximum:
+    [row_max,col_max] = find(max(abs(STA),[],3) == max(max(max(abs(STA)))));
     figure;
     for r = 1:3
         for c = 1:3

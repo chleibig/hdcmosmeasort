@@ -185,39 +185,41 @@ while iteration_no < max_iter
     %within each bigger cluster, we can only unmix the remaining components
     %in a sequential manner (not in parallel); idea: increase
     %minimum similarity until maximum sub cluster size <= max_cluster_size
-    
-    fprintf('Only the %g channels showing the strongest\n',max_cluster_size);
-    fprintf('crosstalk within each cluster will be unmixed.\n');
-    
-    for i = 1:length(cluster_ids)
-        cl_i = find(T == cluster_ids(i))';
-        if (length(cl_i) > max_cluster_size)
-            d_sm = 0;
-            sm_cl_i = SM(cl_i,cl_i);
-            cl_i_tmp = cl_i;
-            while length(cl_i_tmp) > max_cluster_size
-                d_sm = d_sm + 0.01;
-                t = hierarchical_clustering(sm_cl_i,...
-                    min_corr + d_sm,'plotting',0);
-                t_counts = arrayfun(@(x)(sum(t == x)),1:max(t));
-                %take the biggest remaining subcluster:
-                [counts_max,ind_max] = max(t_counts);
-                cl_i_tmp = cl_i(t == ind_max);
-                if length(cl_i_tmp) <= max_cluster_size
-                    cl_i = cl_i_tmp;
+    if max(counts) > max_cluster_size
+        fprintf('Only the %g channels showing the strongest\n',max_cluster_size);
+        fprintf('crosstalk within each cluster will be unmixed.\n');
+
+        for i = 1:length(cluster_ids)
+            cl_i = find(T == cluster_ids(i))';
+            if (length(cl_i) > max_cluster_size)
+                d_sm = 0;
+                sm_cl_i = SM(cl_i,cl_i);
+                cl_i_tmp = cl_i;
+                while length(cl_i_tmp) > max_cluster_size
+                    d_sm = d_sm + 0.01;
+                    t = hierarchical_clustering(sm_cl_i,...
+                        min_corr + d_sm,'plotting',0);
+                    t_counts = arrayfun(@(x)(sum(t == x)),1:max(t));
+                    %take the biggest remaining subcluster:
+                    [counts_max,ind_max] = max(t_counts);
+                    cl_i_tmp = cl_i(t == ind_max);
+                    if length(cl_i_tmp) <= max_cluster_size
+                        cl_i = cl_i_tmp;
+                    end
                 end
+                clear cl_i_tmp;
+                %cl_i is the subcluster to unmix, put each of the remaining
+                %components in a separate cluster (because due to single
+                %linkage clustering they do not necessarily have something in
+                %common):
+                cl_rem = setdiff(find(T == cluster_ids(i)),cl_i);
+                for k = 1:length(cl_rem)
+                    T(cl_rem(k)) = max(T) + 1;
+                end
+                clear cl_rem
             end
-            clear cl_i_tmp;
-            %cl_i is the subcluster to unmix, put each of the remaining 
-            %components in a separate cluster (because due to single
-            %linkage clustering they do not necessarily have something in
-            %common):
-            cl_rem = setdiff(find(T == cluster_ids(i)),cl_i);
-            for k = 1:length(cl_rem)
-                T(cl_rem(k)) = max(T) + 1;
-            end
-            clear cl_rem
         end
+
     end
     
     %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%

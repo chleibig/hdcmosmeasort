@@ -1,5 +1,5 @@
 function [ X_ROI,sensor_rows_ROI, sensor_cols_ROI, units, S_ica, S_cica,...
-                S_noise, A_noise ] = cICAsort(filename)
+                S_noise, A_noise, duplicate_pairs ] = cICAsort(filename)
 %cICAsort perform spike sorting of high density array data
 %based on convolutive ICA
 
@@ -46,6 +46,7 @@ nonlinearity = 'pow3';
 allframes = 0;
 
 %convolutive ICA:
+
 if (round(sr) <= 12) && (round(sr) >= 11)
     L = 7; M = 0;
 elseif (round(sr) <= 24) && (round(sr) >= 23)
@@ -65,11 +66,11 @@ maxlags = 10;
 %duplicates:
 t_s = 0.5; %ms
 t_jitter = 0.5; %ms
-coin_thr = 0.5; %fraction
+coin_thr = 0.5; %fraction of coincident spikes
+sim_thr = 0.5; %similarity of average waveforms
+
 
 t_total_1 = clock;
-
-
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 % Preprocessing - bandpass
@@ -178,17 +179,37 @@ fprintf('performed in %g seconds\n',etime(t2,t1));
 
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-% Mixing filters and spatial positions
+% Collecting results
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 
-[boss_rows, boss_cols] = GetFilterExtrema(A_tau,sensor_rows_ROI,...
-                                            sensor_cols_ROI,1);
-
+data_tmp = reshape(X_ROI,...
+    [length(sensor_rows_ROI) length(sensor_cols_ROI) size(X_ROI,2)]);
 for k = 1:length(units)
     units(k).A_tau = A_tau(:,k,:);
-    units(k).boss_row = boss_rows(k);
-    units(k).boss_col = boss_cols(k);
+    %Consider to calculate STAs only based on "non-coincident" spikes!
+    units(k).STA = GetSTA(data_tmp, units(k).time, sr, 0);
+    [row_max,col_max] = find(max(abs(units(k).STA),[],3)...
+                        == max(max(max(abs(units(k).STA)))));
+    units(k).boss_row = sensor_rows_ROI(row_max);
+    units(k).boss_col = sensor_cols_ROI(col_max);                
 end
+clear data_tmp
+
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+% Remove duplicates
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+
+t1 = clock;
+fprintf('Checking for duplicates...\n');
+[duplicate_pairs] = CheckForDuplicates(units, sr, ...
+                                           t_s, t_jitter, coin_thr, sim_thr);
+N_dupl = size(duplicate_pairs,1);
+t2 = clock;
+fprintf('found %g duplicates in %g seconds\n',N_dupl,etime(t2,t1));
+
+
+
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 % Save results
