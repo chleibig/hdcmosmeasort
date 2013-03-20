@@ -56,7 +56,7 @@ if interactive
    title('coincident spikes');
    xlabel('unit index');
    ylabel('unit index');
-   
+   axis square;
    sim = diag(ones(N,1));
    for i=1:N
        for j=i+1:N
@@ -70,7 +70,7 @@ if interactive
    title('similarities of STAs');
    xlabel('unit index');
    ylabel('unit index');
-   
+   axis square;
    coin_thr = input('Please specify the minimum fraction of coincident spikes for duplicates:');
    sim_thr = input('Please specify the minimum similarity of STAs for duplicates:');
    
@@ -130,8 +130,10 @@ while continue_to_check
             units_tmp(I) = [];%exclude that from further checks
             continue_to_check = true;
         else
-            %no (more) duplicate is found
-            continue_to_check = false;
+            %this was not a duplicate, but we only stop if both criteria
+            %are false
+            units_tmp(I) = [];%exclude that from further checks
+            continue_to_check = true;
         end
     
     end    

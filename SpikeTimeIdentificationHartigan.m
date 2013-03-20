@@ -1,4 +1,4 @@
-function [units] = SpikeTimeIdentificationHartigan(X,sr,show)
+function [units] = SpikeTimeIdentificationHartigan(X,sr,show, interactive)
 % Perform spike time identification on each component
 % of X (dims x samples) individually via 
 % determining threshold crossing events. Potentially presence
@@ -46,15 +46,22 @@ for i=1:N_comp;
             %take the smallest local minimum, which is guaranted as cts is
             %ordered according to bin_ctrs:
             [val,ind] = min(cts);
-            thr_loc_min = bin_ctrs(ind);
-            indices = indices(amplitudes < thr_loc_min);
-            units(i).time = indices/sr;
-            units(i).amplitude = X(i,indices);
+            thr_adap = bin_ctrs(ind);
+            indices_adap = indices(amplitudes < thr_adap);
             if show
-                figure(fH);plot([thr_loc_min thr_loc_min], [0 max(cts)]);
-                figure(fX);plot(indices,X(i,indices),'go','LineStyle','none');             
+                figure(fH);plot([thr_adap thr_adap], [0 max(cts)]);
+                figure(fX);plot(indices_adap,X(i,indices_adap),'go','LineStyle','none');             
+                if interactive
+                    thr_adap = input('Press enter if threshold of current unit is accepted, otherwise enter new threshold!');
+                    if ~isempty(thr_adap)
+                        indices_adap = indices(amplitudes < thr_adap);
+                        figure(fH);plot([thr_adap thr_adap], [0 max(cts)],'g');
+                        figure(fX);plot(indices_adap,X(i,indices_adap),'go','LineStyle','none');
+                    end
+                end
             end
-            
+            units(i).time = indices_adap/sr;
+            units(i).amplitude = X(i,indices_adap);
         else
             units(i).time = indices/sr;
             units(i).amplitude = X(i,indices);
@@ -62,7 +69,6 @@ for i=1:N_comp;
     else
         units(i).time = [];
         units(i).amplitude = [];
-    
     end
 end
 

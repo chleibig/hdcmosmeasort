@@ -171,7 +171,7 @@ fprintf('convolutive ICA step performed in %g seconds\n',etime(t2,t1));
 % fprintf('performed in %g seconds\n',etime(t2,t1));
 
 t1 = clock;
-[units] = SpikeTimeIdentificationHartigan(S_cica, sr,1);
+[units] = SpikeTimeIdentificationHartigan(S_cica, sr,1,1);
 t2 = clock;
 fprintf('Spike time identification with Hartigans dip test\n');
 fprintf('performed in %g seconds\n',etime(t2,t1));
