@@ -67,7 +67,7 @@ maxlags = 10;
 t_s = 0.5; %ms
 t_jitter = 0.5; %ms
 coin_thr = 0.5; %fraction of coincident spikes
-sim_thr = 0.5; %similarity of average waveforms
+sim_thr = 0.8; %similarity of average waveforms
 
 
 t_total_1 = clock;
@@ -171,7 +171,7 @@ fprintf('convolutive ICA step performed in %g seconds\n',etime(t2,t1));
 % fprintf('performed in %g seconds\n',etime(t2,t1));
 
 t1 = clock;
-[units] = SpikeTimeIdentificationHartigan(S_cica, sr,1,1);
+[units] = SpikeTimeIdentificationHartigan(S_cica, sr,1,0);
 t2 = clock;
 fprintf('Spike time identification with Hartigans dip test\n');
 fprintf('performed in %g seconds\n',etime(t2,t1));
@@ -203,7 +203,7 @@ clear data_tmp
 t1 = clock;
 fprintf('Checking for duplicates...\n');
 [duplicate_pairs] = CheckForDuplicates(units, sr, ...
-                                       t_s, t_jitter, coin_thr, sim_thr,1);
+                                       t_s, t_jitter, coin_thr, sim_thr,0);
 N_dupl = size(duplicate_pairs,1);
 t2 = clock;
 fprintf('found %g duplicates in %g seconds\n',N_dupl,etime(t2,t1));

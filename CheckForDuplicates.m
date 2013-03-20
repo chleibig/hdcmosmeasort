@@ -80,7 +80,7 @@ for i=1:N
         STAi = STAi(:);
         STAj = STAj(:);
         %calculate similarity:
-        sim(i,j) = abs(STAi'*STAj / sqrt((STAi'*STAi) * (STAj'*STAj)));
+        sim(i,j) = STAi'*STAj / sqrt((STAi'*STAi) * (STAj'*STAj));
         sim(j,i) = sim(i,j);
     end
 end
