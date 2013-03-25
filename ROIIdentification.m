@@ -1,5 +1,5 @@
-function [ X_ROI, sensor_rows_ROI, sensor_cols_ROI, frames_ROI ] = ROIIdentification(data,...
-                                       sensor_rows, sensor_cols,options)
+function [ X_ROI, sensor_rows_ROI, sensor_cols_ROI, frames_ROI, act_chs ] = ...
+                ROIIdentification(data, sensor_rows, sensor_cols,options)
 %ROIIDENTIFICATION Extract region of interest from data
 %
 %Input:
@@ -18,6 +18,8 @@ function [ X_ROI, sensor_rows_ROI, sensor_cols_ROI, frames_ROI ] = ROIIdentifica
 %   X: (N_sensors x N_samples) array containing a single rectangular ROI 
 %   sensor_rows_ROI, sensor_cols_ROI: list of respective sensor coordinates
 %                                      in ROI
+
+min_act = 3;
 
 if ~strcmp(class(data),'double');
     V = double(data);
@@ -84,8 +86,7 @@ t2 = clock;
 fprintf('...done in %g seconds\n',etime(t2,t1));
 
 activity = sum(tcs,3);
-[rows, cols] = find(activity > 2);
-
+[rows, cols] = find(activity >= min_act);
 %tcs_per_frame = squeeze(sum(sum(tcs)));
 frames_ROI_tmp = squeeze(sum(sum(tcs))) >= 1;
 %take also horizon frames around tcs into account:
@@ -100,6 +101,14 @@ clear frames_ROI_tmp
 
 
 %ROI selection in space:
+%first set those channels to zero that do not reach the activity threshold:
+%data( repmat(activity < min_act,[1 1 N_frames]) ) = 0;
+%mask for active channels: 
+act_chs = (activity >= min_act);
+act_chs = act_chs(min(rows):max(rows),min(cols):max(cols));
+act_chs = reshape(act_chs, [size(act_chs,1)*size(act_chs,2) 1]);
+fprintf('Found activity on %g of %g input channels.\n',nnz(act_chs),N_row*N_col);
+%select rectangular box around activity channels:
 data_ROI = data(min(rows):max(rows),min(cols):max(cols),:);
 X_ROI = reshape(data_ROI, [size(data_ROI,1)*size(data_ROI,2) size(data_ROI,3)]);
 sensor_rows_ROI = [sensor_rows(min(rows):max(rows))];
