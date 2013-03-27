@@ -9,6 +9,7 @@ fprintf('Estimating crosstalk...');
 [D,T] = size(X);
 C_max = zeros(D,D);
 Tau_max = zeros(D,D);
+t1 = clock;
 for i=1:D
     for j=i+1:D
         if SD(i,j) > d_max; C_max(i,j) = 0;
@@ -19,6 +20,8 @@ for i=1:D
         end
     end
 end
+t2 = clock;
+fprintf('done in %g sec.\n',etime(t2,t1));
 
 SM = C_max;
 

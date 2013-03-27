@@ -1,6 +1,6 @@
 function [S_cica, A_tau, S_noise, A_noise] = ConvolutiveICA(X,L,A,...
                                           sr,d_row,d_col,N_row,N_col,...
-                                          d_max,varargin)
+                                          d_max,frames_ROI,varargin)
 %Documentation goes here ..................
 %
 % X: Array of dimension (D,T) containing D channels.
@@ -26,6 +26,7 @@ min_no_peaks = 2;
 t_s = 0.5;
 t_jitter = 0.5;
 coin_thr = 0.5;
+do_cICA = true;
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 % Optional arguments
@@ -147,7 +148,7 @@ while iteration_no < max_iter
     
     SD = SpatialDistance(A, d_row, d_col, N_row, N_col);
 
-    SM = channel_crosstalk(X, maxlags, SD, d_max);
+    SM = channel_crosstalk_wiener(X(:,frames_ROI), maxlags, SD, d_max);
 
     %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
     % Group channels based on crosstalk
@@ -269,7 +270,7 @@ while iteration_no < max_iter
 
     
     
-    if ~isempty(cluster_ids) && iteration_no < max_iter
+    if ~isempty(cluster_ids) && iteration_no < max_iter && do_cICA
         fprintf('Iteration %g...\n',iteration_no);
         switch approach
             case 'cluster'
@@ -279,7 +280,7 @@ while iteration_no < max_iter
                     cl_i = find(T == cluster_ids(i))'
                     %this is the most time consuming step:
                     tic;
-                    [e,ll,bic,invA0,Atau,Hlambda] = cicaarpro(X(cl_i,:),L,M);
+                    [e,ll,bic,invA0,Atau,Hlambda] = cicaarpro(X(cl_i,frames_ROI),L,M);
                     toc;
                     fprintf('BIC=%f, e=%f\n',bic,e);
                     %Mixing matrix update:

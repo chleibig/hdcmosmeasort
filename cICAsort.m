@@ -46,7 +46,6 @@ options.horizon = floor(sr/2);%~0.5 ms to the left and to the right
 nonlinearity = 'pow3';
 allframes = 0;
 estimate = true;
-%numOfIC = 432;
 
 %convolutive ICA:
 
@@ -56,15 +55,17 @@ elseif (round(sr) <= 24) && (round(sr) >= 23)
     L = 8;M = 12;
 end
 
+allframes_cica = 1;
 plotting = 1;
 min_skewness = 0.2;
 d_max = 1000; %maximal distance in \mum for extrema of component filters
 min_corr = 0.2;
 approach = 'cluster';
-max_cluster_size = 2;
+max_cluster_size = 3;
 max_iter = 10;
 min_no_peaks = 3;
-maxlags = 10;
+%maxlags = 10;
+maxlags = L;
 
 %duplicates:
 t_s = 0.5; %ms
@@ -130,16 +131,19 @@ else
     t1 = clock;
     fprintf('Estimating number of instantaneous components...\n');
     [A, W] = fastica(X_ROI(act_chs,frames_ROI),'g',nonlinearity,...
-        'approach','defl','verbose','off');
-    numOfIC = round(0.8 * size(W,1));
+        'approach','defl','verbose','off','interactivePCA','off');
+    numOfIC = round(0.8*size(W,1));
     clear S_ica A W
     t2 = clock;
     fprintf('numOfIC = %g, (%g sec. elapsed.)\n',numOfIC,etime(t2,t1));
+    else
+        %numOfIC = round(0.5 * nnz(act_chs));
+        numOfIC = 29;
     end
     
     t1 = clock;
     [A, W] = fastica(X_ROI(act_chs,frames_ROI),'g',nonlinearity,...
-        'approach','symm','numOfIC',numOfIC);
+        'approach','symm','numOfIC',numOfIC,'interactivePCA','off');
     S_ica = W*X_ROI(act_chs,:);%convolutive ICA has to be performed on contiguous data
     t2 = clock;
     fprintf('Symmetric extraction of ICs performed in %g seconds\n',etime(t2,t1));
@@ -154,11 +158,18 @@ end
 A_tau = zeros(size(X_ROI,1),size(A,2));
 A_tau(act_chs,:) = A;
 A_tau(:,:,2:L+1) = 0;
+
+if allframes_cica
+    frames_ROI_cica = true(size(X_ROI,2),1);
+else
+    frames_ROI_cica = frames_ROI;
+end
+
 %Perform convolutive ICA:
 t1 = clock;
 [S_cica, A_tau, S_noise, A_noise] = ConvolutiveICA(S_ica,L,A_tau,sr,...
     d_row,d_col,length(sensor_rows_ROI),length(sensor_cols_ROI),d_max,...
-    'M',M,'maxlags',maxlags,...
+    frames_ROI_cica,'M',M,'maxlags',maxlags,...
     'plotting',plotting,'min_skewness',min_skewness,'min_corr',min_corr,...
     'approach',approach,'max_cluster_size',max_cluster_size,...
     'max_iter',max_iter,'min_no_peaks',min_no_peaks,...
@@ -214,16 +225,22 @@ N_dupl = size(duplicate_pairs,1);
 t2 = clock;
 fprintf('found %g duplicates in %g seconds\n',N_dupl,etime(t2,t1));
 
-remove = false(length(units),1);
-remove(duplicate_pairs(:,1)) = true;
-units_dupl = units(remove);
-S_dupl = S_cica(remove,:);
-A_dupl = [];
-A_dupl = cat(2,A_dupl,units(remove).A_tau);
-units = units(~remove);
-S_cica = S_cica(~remove,:);
-A_tau = A_tau(:,~remove,:);
-clear remove
+if ~isempty(duplicate_pairs)
+    remove = false(length(units),1);
+    remove(duplicate_pairs(:,1)) = true;
+    units_dupl = units(remove);
+    S_dupl = S_cica(remove,:);
+    A_dupl = [];
+    A_dupl = cat(2,A_dupl,units(remove).A_tau);
+    units = units(~remove);
+    S_cica = S_cica(~remove,:);
+    A_tau = A_tau(:,~remove,:);
+    clear remove
+else
+    units_dupl = [];
+    S_dupl = [];
+    A_dupl = [];
+end
 
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
