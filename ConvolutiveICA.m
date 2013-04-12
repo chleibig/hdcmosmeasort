@@ -24,9 +24,9 @@ max_iter = 5;
 maxlags = ceil(sr);
 min_no_peaks = 2;
 t_s = 0.5;
-t_jitter = 0.5;
+t_jitter = 1;
 coin_thr = 0.5;
-do_cICA = true;
+do_cICA = false;
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 % Optional arguments
