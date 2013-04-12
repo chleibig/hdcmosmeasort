@@ -89,16 +89,23 @@ end
 if interactive
    figure; 
    %this is for debug purposes and to assess suitable threshold parameters
-   subplot(1,2,1);imagesc(coin_frac);colorbar;
+   subplot(2,2,1);imagesc(coin_frac);colorbar;
    title('coincident spikes');
    xlabel('unit index');
    ylabel('unit index');
    axis square;
-   subplot(1,2,2);imagesc(sim);colorbar;
+   subplot(2,2,3);hist(coin_frac(:));
+   xlabel('fraction of coincident spikes');
+   ylabel('counts');
+   subplot(2,2,2);imagesc(sim);colorbar;
    title('similarities of STAs');
    xlabel('unit index');
    ylabel('unit index');
    axis square;
+   subplot(2,2,4);hist(sim(:));
+   xlabel('c_{ij}');
+   ylabel('counts');
+
    coin_thr = input('Please specify the minimum fraction of coincident spikes for duplicates:');
    sim_thr = input('Please specify the minimum similarity of STAs for duplicates:');
 end

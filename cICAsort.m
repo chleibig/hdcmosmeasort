@@ -1,6 +1,6 @@
 function [ X_ROI,sensor_rows_ROI, sensor_cols_ROI, units, S_ica, S_cica,...
    S_noise, A_noise, duplicate_pairs, units_dupl, S_dupl, A_dupl ] = ...
-                                cICAsort(filename)
+                                cICAsort(filename, neuron_rho)
 %cICAsort perform spike sorting of high density array data
 %based on convolutive ICA
 
@@ -24,6 +24,13 @@ d_sensor_col = double(dataset.Metadata.ColumnList(2) - dataset.Metadata.ColumnLi
 d_col = d_sensor_col * 7.4;
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+% Array specs
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+
+sensor_rho = 16384; %per mm²
+
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 % Default arguments
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 
@@ -43,9 +50,12 @@ options.horizon = floor(sr/2);%~0.5 ms to the left and to the right
 %of detected activity is taken for the temporal ROI
 
 %fastICA:
+cpn  = 5; %components per neuron
+per_var = 1; %keep that many dimensions such that per_var of the total 
+              %variance gets explained
 nonlinearity = 'pow3';
 allframes = 0;
-estimate = true;
+estimate = false;
 
 %convolutive ICA:
 
@@ -59,9 +69,9 @@ allframes_cica = 1;
 plotting = 1;
 min_skewness = 0.2;
 d_max = 1000; %maximal distance in \mum for extrema of component filters
-min_corr = 0.2;
+min_corr = 0.1;
 approach = 'cluster';
-max_cluster_size = 3;
+max_cluster_size = 4;
 max_iter = 10;
 min_no_peaks = 3;
 %maxlags = 10;
@@ -72,6 +82,8 @@ t_s = 0.5; %ms
 t_jitter = 1; %ms
 coin_thr = 0.5; %fraction of coincident spikes
 sim_thr = 0.8; %similarity of average waveforms
+
+sign_lev = 0.05; %for automatic threshold adaptation;
 
 
 t_total_1 = clock;
@@ -137,13 +149,17 @@ else
     t2 = clock;
     fprintf('numOfIC = %g, (%g sec. elapsed.)\n',numOfIC,etime(t2,t1));
     else
-        %numOfIC = round(0.5 * nnz(act_chs));
-        numOfIC = 29;
+        numOfIC = ceil(cpn/(sensor_rho/neuron_rho) * nnz(act_chs));
     end
-    
+    %dimensionality reduction based on the percentage of variance
+    %explained:
+    [pcaE, pcaD] = fastica(X_ROI(act_chs, frames_ROI),'only','pca');
+    d = sort(diag(pcaD),1,'descend');
+    eigs_to_keep = find(cumsum(d)/sum(d) <= per_var);
     t1 = clock;
     [A, W] = fastica(X_ROI(act_chs,frames_ROI),'g',nonlinearity,...
-        'approach','symm','numOfIC',numOfIC,'interactivePCA','off');
+        'approach','symm','numOfIC',numOfIC,'lastEig',eigs_to_keep(end));
+        %'pcaE', pcaE, 'pcaD', pcaD);
     S_ica = W*X_ROI(act_chs,:);%convolutive ICA has to be performed on contiguous data
     t2 = clock;
     fprintf('Symmetric extraction of ICs performed in %g seconds\n',etime(t2,t1));
@@ -248,7 +264,7 @@ end
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 
 %Just for visualization purposes:
-SpikeTimeIdentificationHartigan(S_cica, sr,1,0);
+SpikeTimeIdentificationHartigan(S_cica, sr,sign_lev,1,0);
 
 fprintf('Please examine found units.\n');
 keyboard;
@@ -273,7 +289,8 @@ if size(A_tau,2) ~= size(S_cica,1)
 end
 
 %This time with interactive thresholding:
-[units] = SpikeTimeIdentificationHartigan(S_cica, sr,1,1);
+sign_lev_man = input('Specify significance level for unimodality:');
+[units] = SpikeTimeIdentificationHartigan(S_cica, sr,sign_lev_man,1,1);
 
 data_tmp = reshape(X_ROI,...
     [length(sensor_rows_ROI) length(sensor_cols_ROI) size(X_ROI,2)]);

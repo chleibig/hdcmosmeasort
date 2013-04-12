@@ -1,4 +1,4 @@
-function [units] = SpikeTimeIdentificationHartigan(X,sr,show, interactive)
+function [units] = SpikeTimeIdentificationHartigan(X,sr,sign_lev, show, interactive)
 % Perform spike time identification on each component
 % of X (dims x samples) individually via 
 % determining threshold crossing events. Potentially presence
@@ -17,7 +17,7 @@ p = zeros(N_comp,1);
 xlow = zeros(N_comp,1);
 xup = zeros(N_comp,1);
 nboot = 500; %number of bootstrap samples drawn from uniform pdf
-sign_lev = 0.05;
+%sign_lev = 0.05;
 
 if(show);fX=figure;fH=figure;splt_size = ceil(sqrt(N_comp));end
 units = struct('time',{},'amplitude',{});

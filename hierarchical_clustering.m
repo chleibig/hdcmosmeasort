@@ -63,10 +63,12 @@ max_dist = 1 - min_sim;
 Z = linkage(Y,'single');
 if plotting
     figure;
-    subplot(1,2,1);imagesc(SM);axis square; title('similarities');cb = colorbar;
+    subplot(2,2,1);imagesc(SM);axis square; title('crosstalk');cb = colorbar;
     set(cb,'CLim',[0,1]);
+    subplot(2,2,2);hist(SM(:));title('hist(crosstalk)');
+    xlabel('crosstalk');ylabel('counts');
     [I,J] = find(abs(SM) > min_sim);hold on;scatter(J,I);
-    subplot(1,2,2);dendrogram(Z);title('dendrogram based on distances');
+    subplot(2,2,3:4);dendrogram(Z);title('dendrogram based on distances');
     ylim([0,1]);
     hold on; plot([0 size(SM,1)+1],[max_dist max_dist],'r');
 end

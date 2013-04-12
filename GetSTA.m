@@ -1,4 +1,4 @@
-function [STA] = GetSTA(data,time,sr,show)
+function [STA] = GetSTA(data,time,sr,show, weights)
 %GetSTA
 %
 % Input:
@@ -6,6 +6,16 @@ function [STA] = GetSTA(data,time,sr,show)
 % data: (N_ROW x N_COL x N_SAMPLES) array
 % time: list of time stamps in ms
 % sr: Sampling rate in kHz
+% 
+% optional:
+%
+% weights: row vector of length(time) containing
+%          unnormalized, positive weights for STA
+%
+% Output:
+%
+% STA: (N_ROW,N_COL,FRAMES_STA) - array
+
 
 [N_ROW,N_COL,N_SAMPLES] = size(data);
 
@@ -18,9 +28,16 @@ f_tot = pre + post + 1;
 
 %take only those spikes for which the desired window is entirely contained
 %in the data:
-spk_tr = spk_tr( ((spk_tr - pre) >= 1) & ((spk_tr + post) <= N_SAMPLES) );
-
+spks_to_keep = ((spk_tr - pre) >= 1) & ((spk_tr + post) <= N_SAMPLES);
+spk_tr = spk_tr( spks_to_keep );
 N_spks = length(spk_tr);
+
+if nargin < 5;
+    weights = ones(1,N_spks)/N_spks;
+else    
+    weights = weights( spks_to_keep )/sum(weights( spks_to_keep ));
+    if size(weights,1) > size(weights,2); weigths = weights'; end
+end
 
 %X = reshape(data, [N_ROW*N_COL N_SAMPLES]);
 
@@ -30,12 +47,13 @@ for i = 1:N_spks
     spks(i,:,:,:) = data(:,:,spk_tr(i)-pre:spk_tr(i)+post);
 end
 
-STA = squeeze(mean(spks,1));
+%STA = squeeze(mean(spks,1));
+STA = reshape(weights*reshape(spks,N_spks,[]),[N_ROW,N_COL,f_tot]);
 
 if show
     %Get position of maximum:
     [row_max,col_max] = find(max(abs(STA),[],3) == max(max(max(abs(STA)))));
-    figure;
+    figure;title('STA and spikes')
     for r = 1:3
         for c = 1:3
             subplot(3,3,sub2ind([3 3],c,r));
@@ -46,7 +64,7 @@ if show
             end
         end
     end
-    figure;
+    figure;title('STA frames')
     for i = 1:size(STA,3);
         subplot(ceil(sqrt(size(STA,3))),ceil(sqrt(size(STA,3))),i);
         imagesc(STA(:,:,i));
