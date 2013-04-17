@@ -50,7 +50,7 @@ options.horizon = floor(sr/2);%~0.5 ms to the left and to the right
 %of detected activity is taken for the temporal ROI
 
 %fastICA:
-cpn  = 5; %components per neuron
+cpn  = 3; %components per neuron
 per_var = 1; %keep that many dimensions such that per_var of the total 
               %variance gets explained
 nonlinearity = 'pow3';
@@ -204,7 +204,7 @@ fprintf('convolutive ICA step performed in %g seconds\n',etime(t2,t1));
 % fprintf('performed in %g seconds\n',etime(t2,t1));
 
 t1 = clock;
-[units] = SpikeTimeIdentificationHartigan(S_cica, sr,0,0);
+[units] = SpikeTimeIdentificationHartigan(S_cica, sr,sign_lev,1,1);
 t2 = clock;
 fprintf('Spike time identification with Hartigans dip test\n');
 fprintf('performed in %g seconds\n',etime(t2,t1));
