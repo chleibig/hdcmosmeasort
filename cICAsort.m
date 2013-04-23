@@ -54,6 +54,7 @@ cpn  = 3; %components per neuron
 per_var = 1; %keep that many dimensions such that per_var of the total 
               %variance gets explained
 nonlinearity = 'pow3';
+approach = 'symm';
 allframes = 0;
 estimate = false;
 
@@ -70,7 +71,7 @@ plotting = 1;
 min_skewness = 0.2;
 d_max = 1000; %maximal distance in \mum for extrema of component filters
 min_corr = 0.1;
-approach = 'cluster';
+grouping = 'cluster';
 max_cluster_size = 4;
 max_iter = 10;
 min_no_peaks = 3;
@@ -158,11 +159,11 @@ else
     eigs_to_keep = find(cumsum(d)/sum(d) <= per_var);
     t1 = clock;
     [A, W] = fastica(X_ROI(act_chs,frames_ROI),'g',nonlinearity,...
-        'approach','symm','numOfIC',numOfIC,'lastEig',eigs_to_keep(end));
+        'approach',approach,'numOfIC',numOfIC,'lastEig',eigs_to_keep(end));
         %'pcaE', pcaE, 'pcaD', pcaD);
     S_ica = W*X_ROI(act_chs,:);%convolutive ICA has to be performed on contiguous data
     t2 = clock;
-    fprintf('Symmetric extraction of ICs performed in %g seconds\n',etime(t2,t1));
+    fprintf('Extraction of ICs performed in %g seconds\n',etime(t2,t1));
 end
 
 
@@ -187,7 +188,7 @@ t1 = clock;
     d_row,d_col,length(sensor_rows_ROI),length(sensor_cols_ROI),d_max,...
     frames_ROI_cica,'M',M,'maxlags',maxlags,...
     'plotting',plotting,'min_skewness',min_skewness,'min_corr',min_corr,...
-    'approach',approach,'max_cluster_size',max_cluster_size,...
+    'approach',grouping,'max_cluster_size',max_cluster_size,...
     'max_iter',max_iter,'min_no_peaks',min_no_peaks,...
     't_s',t_s,'t_jitter',t_jitter, 'coin_thr',coin_thr);
 t2 = clock;
