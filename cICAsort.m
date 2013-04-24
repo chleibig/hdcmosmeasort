@@ -1,6 +1,6 @@
 function [ X_ROI,sensor_rows_ROI, sensor_cols_ROI, units, S_ica, S_cica,...
    S_noise, A_noise, duplicate_pairs, units_dupl, S_dupl, A_dupl ] = ...
-                                cICAsort(filename, neuron_rho)
+                                cICAsort(filename)
 %cICAsort perform spike sorting of high density array data
 %based on convolutive ICA
 
@@ -19,32 +19,43 @@ sensor_cols = dataset.Metadata.ColumnList;
 sr = length(dataset.Metadata.FrameStartTimes)/...
     dataset.Metadata.FrameStartTimes(end);%in kHz
 d_sensor_row = double(dataset.Metadata.RowList(2) - dataset.Metadata.RowList(1));
-d_row = d_sensor_row * 7.4;
 d_sensor_col = double(dataset.Metadata.ColumnList(2) - dataset.Metadata.ColumnList(1));
-d_col = d_sensor_col * 7.4;
+
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 % Array specs
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 
-sensor_rho = 16384; %per mm²
+pitch = 7.4; %µm
+d_row = d_sensor_row * pitch;
+d_col = d_sensor_col * pitch;
 
+sensor_rho = 1000000/(d_row * d_col); %per mm²
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+% Tissue specs
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+
+neuron_rho = input('Please specify the expected neuron density in mm⁻²: ');
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 % Default arguments
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 
 %ROI identification:
-if d_sensor_col == 2
+if d_sensor_col == 2 && d_sensor_row == 1
     options.thr_factor = 10.95;
     options.n_rows = 5;
     options.n_cols = 3;
     options.n_frames = 3;
-elseif d_sensor_col == 1
+elseif d_sensor_col == d_sensor_row
     options.thr_factor = 9.5;
     options.n_rows = 3;
     options.n_cols = 3;
     options.n_frames = 3;
+else
+    error(strcat('Unknown readout configuration.\n',...
+    'Please check parameters for ROI identification'));
 end
 options.horizon = floor(sr/2);%~0.5 ms to the left and to the right
 %of detected activity is taken for the temporal ROI

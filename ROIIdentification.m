@@ -78,6 +78,15 @@ else
         col-dcol:col+dcol,frame-dframe:frame+dframe),dim_env,1))),rowg,colg,frameg);
 
     clear V_quad
+    
+    if false
+       figure;hist(sqrt(V_env(:)),floor(sqrt(length(V_env(:)))));
+       title('hist(|V_{env}|)');
+       xlabel('V_{env}');
+       ylabel('counts');
+       keyboard;
+       thr_factor = input('Please specify a threshold |V_0| for activity detection: ');
+    end
 
     tcs = (V_env > thr_factor^2);
 end
