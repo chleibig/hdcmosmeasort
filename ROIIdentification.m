@@ -79,7 +79,7 @@ else
 
     clear V_quad
     
-    if false
+    if true
        figure;hist(sqrt(V_env(:)),floor(sqrt(length(V_env(:)))));
        title('hist(|V_{env}|)');
        xlabel('V_{env}');

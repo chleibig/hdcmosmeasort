@@ -106,6 +106,13 @@ while iteration_no < max_iter
     skewn = skewness(X');
     %assess number of peaks in each component:
     n_peaks = zeros(1,size(X,1));
+    figure;
+    subplot(2,1,1);hist(skewn,floor(sqrt(length(skewn))));title('Skewness');
+    xlabel('skewness');ylabel('counts');
+    subplot(2,1,2);hist(n_peaks,floor(sqrt(length(n_peaks))));title('Number of peaks per component');
+    xlabel('Number of peaks per component');ylabel('counts');
+
+    
     for i = 1:size(X,1)
         [indices, peaks] = find_peaks(abs(X(i,:)),...
         5*median(abs(X(i,:))/0.6745),ceil(sr));
