@@ -332,6 +332,7 @@ SaveResults(filename, units);
 t_total_2 = clock;
 fprintf('Total cICAsort performed in %g seconds\n',etime(t_total_2,t_total_1));
 
+diary off
 
 
 

@@ -26,7 +26,7 @@ min_no_peaks = 2;
 t_s = 0.5;
 t_jitter = 1;
 coin_thr = 0.5;
-do_cICA = false;
+do_cICA = true
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 % Optional arguments
