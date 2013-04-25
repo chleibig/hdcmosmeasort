@@ -93,7 +93,7 @@ maxlags = L;
 t_s = 0.5; %ms
 t_jitter = 1; %ms
 coin_thr = 0.5; %fraction of coincident spikes
-sim_thr = 0.8; %similarity of average waveforms
+sim_thr = 0.6; %similarity of average waveforms
 
 sign_lev = 0.05; %for automatic threshold adaptation;
 

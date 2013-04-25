@@ -71,6 +71,10 @@ if plotting
     subplot(2,2,3:4);dendrogram(Z);title('dendrogram based on distances');
     ylim([0,1]);
     hold on; plot([0 size(SM,1)+1],[max_dist max_dist],'r');
+    max_dist_tmp = input(strcat('Current max_dist is ',num2str(max_dist),...
+    '. If desired, please enter different threshold: '));
+    if ~isempty(max_dist_tmp);max_dist = max_dist_tmp;end
+    clear max_dist_tmp
 end
 
 T = cluster(Z,'Cutoff',max_dist,'Criterion','distance');

@@ -26,7 +26,7 @@ min_no_peaks = 2;
 t_s = 0.5;
 t_jitter = 1;
 coin_thr = 0.5;
-do_cICA = false;
+do_cICA = true;
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 % Optional arguments
@@ -109,15 +109,14 @@ while iteration_no < max_iter
     figure;
     subplot(2,1,1);hist(skewn,floor(sqrt(length(skewn))));title('Skewness');
     xlabel('skewness');ylabel('counts');
-    subplot(2,1,2);hist(n_peaks,floor(sqrt(length(n_peaks))));title('Number of peaks per component');
-    xlabel('Number of peaks per component');ylabel('counts');
-
     
     for i = 1:size(X,1)
         [indices, peaks] = find_peaks(abs(X(i,:)),...
         5*median(abs(X(i,:))/0.6745),ceil(sr));
         n_peaks(i) = length(peaks);
     end
+    subplot(2,1,2);hist(n_peaks,floor(sqrt(length(n_peaks))));title('Number of peaks per component');
+    xlabel('Number of peaks per component');ylabel('counts');
     keep = (abs(skewn) > min_skewness) & (n_peaks >= min_no_peaks);
     fprintf('%g channels from the %g input channels will be kept...\n',...
         length(nonzeros(keep)),size(X,1));
