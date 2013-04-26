@@ -1,6 +1,6 @@
 function [S_cica, A_tau, S_noise, A_noise] = ConvolutiveICA(X,L,A,...
                                           sr,d_row,d_col,N_row,N_col,...
-                                          d_max,frames_ROI,varargin)
+                                          d_max,frames_ROI,do_cICA,varargin)
 %Documentation goes here ..................
 %
 % X: Array of dimension (D,T) containing D channels.
@@ -26,7 +26,7 @@ min_no_peaks = 2;
 t_s = 0.5;
 t_jitter = 1;
 coin_thr = 0.5;
-do_cICA = false
+do_cICA
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 % Optional arguments
