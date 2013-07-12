@@ -12,6 +12,8 @@ function [ X_ROI, sensor_rows_ROI, sensor_cols_ROI, frames_ROI, act_chs ] = ...
 %            options.thr_factor threshold in multiples of std
 %            options.n_rows, .n_cols, .n_frames  environment in data coor-
 %                                                dinates
+%            options.horizon  ms to the past and to the future of detected 
+%                             activity is taken for the temporal ROI
 %
 %Output:
 %

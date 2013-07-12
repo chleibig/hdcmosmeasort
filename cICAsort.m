@@ -79,6 +79,9 @@ if (round(sr) <= 12) && (round(sr) >= 11)
     L = 7; M = 0;
 elseif (round(sr) <= 24) && (round(sr) >= 23)
     L = 8;M = 12;
+else
+    L = input('Please specify L: ');
+    M = input('Please specify M: ');    
 end
 
 allframes_cica = 1;

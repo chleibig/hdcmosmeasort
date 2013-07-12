@@ -36,7 +36,7 @@ if nargin < 5;
     weights = ones(1,N_spks)/N_spks;
 else    
     weights = weights( spks_to_keep )/sum(weights( spks_to_keep ));
-    if size(weights,1) > size(weights,2); weigths = weights'; end
+    if size(weights,1) > size(weights,2); weights = weights'; end
 end
 
 %X = reshape(data, [N_ROW*N_COL N_SAMPLES]);
@@ -47,7 +47,6 @@ for i = 1:N_spks
     spks(i,:,:,:) = data(:,:,spk_tr(i)-pre:spk_tr(i)+post);
 end
 
-%STA = squeeze(mean(spks,1));
 STA = reshape(weights*reshape(spks,N_spks,[]),[N_ROW,N_COL,f_tot]);
 
 if show
@@ -61,6 +60,7 @@ if show
                     ((row_max-1+r)<=N_ROW) && ((col_max-1+c)<=N_COL)
                 plot(squeeze(spks(:,row_max-1+r,col_max-1+c,:))','Color',[0.75 0.75 0.75]);
                 hold on;plot(squeeze(STA(row_max-1+r,col_max-1+c,:)),'g')
+                xlim([0 f_tot+1])
             end
         end
     end
