@@ -13,26 +13,27 @@ diary logfile_cICAsort.txt
 % Load data
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 
-dataset = hdf5load(filename);
-data = permute(dataset.Data, [3 2 1]);
-if ~strcmp(class(data),'double');data = double(data);end;
-sensor_rows = dataset.Metadata.RowList;
-sensor_cols = dataset.Metadata.ColumnList;
-sr = length(dataset.Metadata.FrameStartTimes)/...
-    dataset.Metadata.FrameStartTimes(end);%in kHz
-d_sensor_row = double(dataset.Metadata.RowList(2) - dataset.Metadata.RowList(1));
-d_sensor_col = double(dataset.Metadata.ColumnList(2) - dataset.Metadata.ColumnList(1));
-
+[dataset] = read_data(filename);
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-% Array specs
+% Data and array specs
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 
-pitch = 7.4; %µm
-d_row = d_sensor_row * pitch;
-d_col = d_sensor_col * pitch;
+sensor_rows = dataset.sensorRows;
+sensor_cols = dataset.sensorCols;
+sr = dataset.sr;
+pitch = dataset.sensorPitch; %in µm
+
+d_sensor_row = double(sensor_rows(2) - sensor_rows(1)); %in coord
+d_sensor_col = double(sensor_cols(2) - sensor_cols(1)); %in coord
+d_row = d_sensor_row * pitch; %in µm
+d_col = d_sensor_col * pitch; %in µm
 
 sensor_rho = 1000000/(d_row * d_col); %per mm²
+
+data = dataset.X;
+
+clear dataset
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 % Tissue specs
