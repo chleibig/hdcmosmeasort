@@ -63,14 +63,23 @@ end
 options.horizon = floor(sr/2);%~0.5 ms to the left and to the right
 %of detected activity is taken for the temporal ROI
 
-%fastICA:
-cpn  = 3; %components per neuron
-per_var = 1; %keep that many dimensions such that per_var of the total 
-              %variance gets explained
-nonlinearity = 'pow3';
-approach = 'symm';
-allframes = 0;
-estimate = false;
+%fastICA parameters:
+
+par.ica.allframes = false; %if true, all frames are used
+par.ica.allchannels = false; %if true, all channels are used
+%par.ica.frames - boolean array of length T, indicating the frames to
+%be used (overwritten, if allframes is true) gets assigned after roi
+%identification
+%par.ica.channels - boolean array of length M, indicating the channels
+%to be used (overwritten, if allchannels is true) gets assigned after
+%roi identification
+par.ica.nonlinearity = 'pow3';
+par.ica.estimate = false;
+par.ica.cpn  = 3; %components per neuron for later use to calculate
+%par.ica.numOfIC (overwritten, if params.estimate is true)
+par.ica.per_var = 1; %keep that many dimensions such that per_var of the
+%total variance gets explained
+par.ica.approach = 'symm';
 
 %convolutive ICA:
 
@@ -142,49 +151,56 @@ t_total_1 = clock;
 %extract only as many ICs as possible with fastICA, first determine this
 %number with a deflation approach and then extract the same number
 %of components with the symmetric approach:
-if allframes
-    t1 = clock;
-    fprintf('Estimating number of instantaneous components...\n');
-    [S_ica, A, W] = fastica(X_ROI(act_chs,:),'g',nonlinearity,...
-        'approach','defl','verbose','off');
-    numOfIC = round(0.8 * size(S_ica,1));
-    clear S_ica A W
-    t2 = clock;
-    fprintf('numOfIC = %g, (%g sec. elapsed.)\n',numOfIC,etime(t2,t1));
+% if allframes
+%     t1 = clock;
+%     fprintf('Estimating number of instantaneous components...\n');
+%     [S_ica, A, W] = fastica(X_ROI(act_chs,:),'g',nonlinearity,...
+%         'approach','defl','verbose','off');
+%     numOfIC = round(0.8 * size(S_ica,1));
+%     clear S_ica A W
+%     t2 = clock;
+%     fprintf('numOfIC = %g, (%g sec. elapsed.)\n',numOfIC,etime(t2,t1));
+% 
+%     t1 = clock;
+%     [S_ica, A, W] = fastica(X_ROI(act_chs,:),'g',nonlinearity,...
+%         'approach','symm','numOfIC',numOfIC);
+%     t2 = clock;
+%     fprintf('Symmetric extraction of ICs performed in %g seconds\n',etime(t2,t1));
+% 
+% else
+%     if estimate
+%     t1 = clock;
+%     fprintf('Estimating number of instantaneous components...\n');
+%     [A, W] = fastica(X_ROI(act_chs,frames_ROI),'g',nonlinearity,...
+%         'approach','defl','verbose','off','interactivePCA','off');
+%     numOfIC = round(0.8*size(W,1));
+%     clear S_ica A W
+%     t2 = clock;
+%     fprintf('numOfIC = %g, (%g sec. elapsed.)\n',numOfIC,etime(t2,t1));
+%     else
+%         numOfIC = ceil(cpn/(sensor_rho/neuron_rho) * nnz(act_chs));
+%     end
+%     %dimensionality reduction based on the percentage of variance
+%     %explained:
+%     [pcaE, pcaD] = fastica(X_ROI(act_chs, frames_ROI),'only','pca');
+%     d = sort(diag(pcaD),1,'descend');
+%     eigs_to_keep = find(cumsum(d)/sum(d) <= per_var);
+%     t1 = clock;
+%     [A, W] = fastica(X_ROI(act_chs,frames_ROI),'g',nonlinearity,...
+%         'approach',approach,'numOfIC',numOfIC,'lastEig',eigs_to_keep(end));
+%         %'pcaE', pcaE, 'pcaD', pcaD);
+%     S_ica = W*X_ROI(act_chs,:);%convolutive ICA has to be performed on contiguous data
+%     t2 = clock;
+%     fprintf('Extraction of ICs performed in %g seconds\n',etime(t2,t1));
+% end
 
-    t1 = clock;
-    [S_ica, A, W] = fastica(X_ROI(act_chs,:),'g',nonlinearity,...
-        'approach','symm','numOfIC',numOfIC);
-    t2 = clock;
-    fprintf('Symmetric extraction of ICs performed in %g seconds\n',etime(t2,t1));
+par.ica.frames = frames_ROI;
+par.ica.channels = act_chs;
 
-else
-    if estimate
-    t1 = clock;
-    fprintf('Estimating number of instantaneous components...\n');
-    [A, W] = fastica(X_ROI(act_chs,frames_ROI),'g',nonlinearity,...
-        'approach','defl','verbose','off','interactivePCA','off');
-    numOfIC = round(0.8*size(W,1));
-    clear S_ica A W
-    t2 = clock;
-    fprintf('numOfIC = %g, (%g sec. elapsed.)\n',numOfIC,etime(t2,t1));
-    else
-        numOfIC = ceil(cpn/(sensor_rho/neuron_rho) * nnz(act_chs));
-    end
-    %dimensionality reduction based on the percentage of variance
-    %explained:
-    [pcaE, pcaD] = fastica(X_ROI(act_chs, frames_ROI),'only','pca');
-    d = sort(diag(pcaD),1,'descend');
-    eigs_to_keep = find(cumsum(d)/sum(d) <= per_var);
-    t1 = clock;
-    [A, W] = fastica(X_ROI(act_chs,frames_ROI),'g',nonlinearity,...
-        'approach',approach,'numOfIC',numOfIC,'lastEig',eigs_to_keep(end));
-        %'pcaE', pcaE, 'pcaD', pcaD);
-    S_ica = W*X_ROI(act_chs,:);%convolutive ICA has to be performed on contiguous data
-    t2 = clock;
-    fprintf('Extraction of ICs performed in %g seconds\n',etime(t2,t1));
-end
+par.ica.numOfIC = ceil(par.ica.cpn/(sensor_rho/neuron_rho) * ...
+    nnz(par.ica.channels));
 
+[S_ica, A, W, par.ica] = fasticanode(X_ROI,par.ica);
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 % Convolutive ICA
