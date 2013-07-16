@@ -26,6 +26,7 @@ min_no_peaks = 2;
 t_s = 0.5;
 t_jitter = 1;
 coin_thr = 0.5;
+
 do_cICA
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
@@ -100,27 +101,10 @@ while iteration_no < max_iter
     % Remove components    
     %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
     
+    % 1. get indices of components to keep
     
-    % 1. set mask based on skewness and presence of peaks criteria
-    
-    skewn = skewness(X');
-    %assess number of peaks in each component:
-    n_peaks = zeros(1,size(X,1));
-    figure;
-    subplot(2,1,1);hist(skewn,floor(sqrt(length(skewn))));title('Skewness');
-    xlabel('skewness');ylabel('counts');
-    
-    for i = 1:size(X,1)
-        [indices, peaks] = find_peaks(abs(X(i,:)),...
-        5*median(abs(X(i,:))/0.6745),ceil(sr));
-        n_peaks(i) = length(peaks);
-    end
-    subplot(2,1,2);hist(n_peaks,floor(sqrt(length(n_peaks))));title('Number of peaks per component');
-    xlabel('Number of peaks per component');ylabel('counts');
-    keep = (abs(skewn) > min_skewness) & (n_peaks >= min_no_peaks);
-    fprintf('%g channels from the %g input channels will be kept...\n',...
-        length(nonzeros(keep)),size(X,1));
-   
+    [keep] = checkfornoisycomponents(X,min_skewness,min_no_peaks,sr,plotting);
+
     % 2. remove components and store them away:
     S_noise = [S_noise;X(~keep,:)];
     A_noise = cat(2,A_noise,A(:,~keep,:));
@@ -160,7 +144,7 @@ while iteration_no < max_iter
     % Group channels based on crosstalk
     %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 
-    [T] = hierarchical_clustering(SM,min_corr);
+    [T] = hierarchical_clustering(SM,min_corr,'plotting',plotting);
     %counts(i): total # of members belonging to cluster i:
     counts = arrayfun(@(x)(sum(T == x)),1:max(T));
     fprintf('Identified %g clusters showing crosstalk.\n',...

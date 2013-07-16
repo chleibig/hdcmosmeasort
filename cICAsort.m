@@ -1,4 +1,4 @@
-function [ X_ROI,sensor_rows_ROI, sensor_cols_ROI, units, S_ica, S_cica,...
+function [ X_ROI,sensor_rows_ROI, sensor_cols_ROI, units, S,...
    S_noise, A_noise, duplicate_pairs, units_dupl, S_dupl, A_dupl ] = ...
                                 cICAsort(filename)
 %cICAsort perform spike sorting of high density array data
@@ -95,7 +95,7 @@ else
 end
 
 allframes_cica = 1;
-plotting = 1;
+plotting = 0;
 min_skewness = 0.2;
 d_max = 1000; %maximal distance in \mum for extrema of component filters
 min_corr = 0.1;
@@ -148,86 +148,67 @@ t_total_1 = clock;
 % Preprocessing with fastICA
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 
-%extract only as many ICs as possible with fastICA, first determine this
-%number with a deflation approach and then extract the same number
-%of components with the symmetric approach:
-% if allframes
-%     t1 = clock;
-%     fprintf('Estimating number of instantaneous components...\n');
-%     [S_ica, A, W] = fastica(X_ROI(act_chs,:),'g',nonlinearity,...
-%         'approach','defl','verbose','off');
-%     numOfIC = round(0.8 * size(S_ica,1));
-%     clear S_ica A W
-%     t2 = clock;
-%     fprintf('numOfIC = %g, (%g sec. elapsed.)\n',numOfIC,etime(t2,t1));
-% 
-%     t1 = clock;
-%     [S_ica, A, W] = fastica(X_ROI(act_chs,:),'g',nonlinearity,...
-%         'approach','symm','numOfIC',numOfIC);
-%     t2 = clock;
-%     fprintf('Symmetric extraction of ICs performed in %g seconds\n',etime(t2,t1));
-% 
-% else
-%     if estimate
-%     t1 = clock;
-%     fprintf('Estimating number of instantaneous components...\n');
-%     [A, W] = fastica(X_ROI(act_chs,frames_ROI),'g',nonlinearity,...
-%         'approach','defl','verbose','off','interactivePCA','off');
-%     numOfIC = round(0.8*size(W,1));
-%     clear S_ica A W
-%     t2 = clock;
-%     fprintf('numOfIC = %g, (%g sec. elapsed.)\n',numOfIC,etime(t2,t1));
-%     else
-%         numOfIC = ceil(cpn/(sensor_rho/neuron_rho) * nnz(act_chs));
-%     end
-%     %dimensionality reduction based on the percentage of variance
-%     %explained:
-%     [pcaE, pcaD] = fastica(X_ROI(act_chs, frames_ROI),'only','pca');
-%     d = sort(diag(pcaD),1,'descend');
-%     eigs_to_keep = find(cumsum(d)/sum(d) <= per_var);
-%     t1 = clock;
-%     [A, W] = fastica(X_ROI(act_chs,frames_ROI),'g',nonlinearity,...
-%         'approach',approach,'numOfIC',numOfIC,'lastEig',eigs_to_keep(end));
-%         %'pcaE', pcaE, 'pcaD', pcaD);
-%     S_ica = W*X_ROI(act_chs,:);%convolutive ICA has to be performed on contiguous data
-%     t2 = clock;
-%     fprintf('Extraction of ICs performed in %g seconds\n',etime(t2,t1));
-% end
-
 par.ica.frames = frames_ROI;
 par.ica.channels = act_chs;
 
 par.ica.numOfIC = ceil(par.ica.cpn/(sensor_rho/neuron_rho) * ...
     nnz(par.ica.channels));
 
-[S_ica, A, W, par.ica] = fasticanode(X_ROI,par.ica);
+[S, A, W, par.ica] = fasticanode(X_ROI,par.ica);
+
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 % Convolutive ICA
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 
-%Initialize lagged filters:
-A_tau = zeros(size(X_ROI,1),size(A,2));
-A_tau(act_chs,:) = A;
-A_tau(:,:,2:L+1) = 0;
+if do_cICA
+    %Initialize lagged filters:
+    A_tau = zeros(size(X_ROI,1),size(A,2));
+    A_tau(act_chs,:) = A;
+    A_tau(:,:,2:L+1) = 0;
 
-if allframes_cica
-    frames_ROI_cica = true(size(X_ROI,2),1);
+    if allframes_cica
+        frames_ROI_cica = true(size(X_ROI,2),1);
+    else
+        frames_ROI_cica = frames_ROI;
+    end
+
+    %Perform convolutive ICA:
+    t1 = clock;
+    [S, A_tau, S_noise, A_noise] = ConvolutiveICA(S,L,A_tau,sr,...
+        d_row,d_col,length(sensor_rows_ROI),length(sensor_cols_ROI),d_max,...
+        frames_ROI_cica,do_cICA,'M',M,'maxlags',maxlags,...
+        'plotting',plotting,'min_skewness',min_skewness,'min_corr',min_corr,...
+        'approach',grouping,'max_cluster_size',max_cluster_size,...
+        'max_iter',max_iter,'min_no_peaks',min_no_peaks,...
+        't_s',t_s,'t_jitter',t_jitter, 'coin_thr',coin_thr);
+    t2 = clock;
+    fprintf('convolutive ICA step performed in %g seconds\n',etime(t2,t1));
 else
-    frames_ROI_cica = frames_ROI;
+    fprintf('Convolutive ICA is not applied!\n');
 end
 
-%Perform convolutive ICA:
-t1 = clock;
-[S_cica, A_tau, S_noise, A_noise] = ConvolutiveICA(S_ica,L,A_tau,sr,...
-    d_row,d_col,length(sensor_rows_ROI),length(sensor_cols_ROI),d_max,...
-    frames_ROI_cica,do_cICA,'M',M,'maxlags',maxlags,...
-    'plotting',plotting,'min_skewness',min_skewness,'min_corr',min_corr,...
-    'approach',grouping,'max_cluster_size',max_cluster_size,...
-    'max_iter',max_iter,'min_no_peaks',min_no_peaks,...
-    't_s',t_s,'t_jitter',t_jitter, 'coin_thr',coin_thr);
-t2 = clock;
-fprintf('convolutive ICA step performed in %g seconds\n',etime(t2,t1));
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+% Check for noisy components
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+
+% if convolutive ICA was not applied, we need to initialize some variables:
+if exist('A_noise','var') ~= 1; A_noise = []; end
+if exist('S_noise','var') ~= 1; S_noise = []; end
+if exist('A_tau','var') ~= 1
+    A_tau = zeros(size(X_ROI,1),size(A,2));
+    A_tau(act_chs,:) = A;
+    A_tau(:,:,2:L+1) = 0;
+end
+
+[keep] = checkfornoisycomponents(S,min_skewness,min_no_peaks,sr,plotting);
+ 
+% store noisy stuff away and remove it from components and filters:
+S_noise = [S_noise;S(~keep,:)];
+A_noise = cat(2,A_noise,A_tau(:,~keep,:));
+S = S(keep,:);
+A_tau = A_tau(:,keep,:);
+
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 % Spike time identification
@@ -240,7 +221,7 @@ fprintf('convolutive ICA step performed in %g seconds\n',etime(t2,t1));
 % fprintf('performed in %g seconds\n',etime(t2,t1));
 
 t1 = clock;
-[units] = SpikeTimeIdentificationHartigan(S_cica, sr,sign_lev,1,1);
+[units] = SpikeTimeIdentificationHartigan(S, sr,sign_lev,1,1);
 t2 = clock;
 fprintf('Spike time identification with Hartigans dip test\n');
 fprintf('performed in %g seconds\n',etime(t2,t1));
@@ -281,11 +262,11 @@ if ~isempty(duplicate_pairs)
     remove = false(length(units),1);
     remove(duplicate_pairs(:,1)) = true;
     units_dupl = units(remove);
-    S_dupl = S_cica(remove,:);
+    S_dupl = S(remove,:);
     A_dupl = [];
     A_dupl = cat(2,A_dupl,units(remove).A_tau);
     units = units(~remove);
-    S_cica = S_cica(~remove,:);
+    S = S(~remove,:);
     A_tau = A_tau(:,~remove,:);
     clear remove
 else
@@ -300,7 +281,7 @@ end
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 
 %Just for visualization purposes:
-SpikeTimeIdentificationHartigan(S_cica, sr,sign_lev,1,0);
+SpikeTimeIdentificationHartigan(S, sr,sign_lev,1,0);
 
 fprintf('Please examine found units.\n');
 keyboard;
@@ -309,9 +290,9 @@ remove_IDs = input('Please specify all units to delete by their IDs in a vector:
 remove = false(length(units),1);
 remove(remove_IDs) = true;
 
-S_noise = [S_noise;S_cica(remove,:)];
+S_noise = [S_noise;S(remove,:)];
 A_noise = cat(2,A_noise,units(remove).A_tau);
-S_cica = S_cica(~remove,:);
+S = S(~remove,:);
 units = units(~remove);
 A_tau = A_tau(:,~remove,:);
 clear remove
@@ -320,13 +301,13 @@ clear remove
 % Collecting final results
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 
-if size(A_tau,2) ~= size(S_cica,1)
+if size(A_tau,2) ~= size(S,1)
     error('Something went wrong!');
 end
 
 %This time with interactive thresholding:
 sign_lev_man = input('Specify significance level for unimodality:');
-[units] = SpikeTimeIdentificationHartigan(S_cica, sr,sign_lev_man,1,1);
+[units] = SpikeTimeIdentificationHartigan(S, sr,sign_lev_man,1,1);
 
 data_tmp = reshape(X_ROI,...
     [length(sensor_rows_ROI) length(sensor_cols_ROI) size(X_ROI,2)]);
