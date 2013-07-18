@@ -14,6 +14,7 @@ function [data] = read_data(filename)
 %        data.sensorRows - list of sensor row coordinates 
 %        data.sensorCols - list of sensor column coordinates  
 %        data.sr - sampling rate in kHz
+%        data.frameStartTimes - in ms
 %        data.sensorPitch - in µm
 %
 %
@@ -40,7 +41,7 @@ switch fileVersion
         data.sensorCols = dataset.Metadata.ColumnList;
         data.sr = length(dataset.Metadata.FrameStartTimes)/...
             dataset.Metadata.FrameStartTimes(end);%in kHz
-        
+        data.frameStartTimes = dataset.Metadata.FrameStartTimes; %in ms
         chipType = h5attget(filename,'/Metadata','ChipType');
         chipType = chipType{1};
         switch chipType

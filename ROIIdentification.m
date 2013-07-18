@@ -1,5 +1,5 @@
 function [ X_ROI, sensor_rows_ROI, sensor_cols_ROI, frames_ROI, act_chs ] = ...
-                ROIIdentification(data, sensor_rows, sensor_cols,options)
+                ROIIdentification(data, sensor_rows, sensor_cols,options,plotting)
 %ROIIDENTIFICATION Extract region of interest from data
 %
 %Input:
@@ -12,8 +12,9 @@ function [ X_ROI, sensor_rows_ROI, sensor_cols_ROI, frames_ROI, act_chs ] = ...
 %            options.thr_factor threshold in multiples of std
 %            options.n_rows, .n_cols, .n_frames  environment in data coor-
 %                                                dinates
-%            options.horizon  ms to the past and to the future of detected 
+%            options.horizon  frames to the past and to the future of detected 
 %                             activity is taken for the temporal ROI
+%   plotting - flag to switch graphical output on or of
 %
 %Output:
 %
@@ -81,7 +82,7 @@ else
 
     clear V_quad
     
-    if false
+    if plotting
        figure;hist(sqrt(V_env(:)),floor(sqrt(length(V_env(:)))));
        title('hist(|V_{env}|)');
        xlabel('V_{env}');
@@ -99,17 +100,7 @@ fprintf('...done in %g seconds\n',etime(t2,t1));
 activity = sum(tcs,3);
 [rows, cols] = find(activity >= min_act);
 %tcs_per_frame = squeeze(sum(sum(tcs)));
-frames_ROI_tmp = squeeze(sum(sum(tcs))) >= 1;
-%take also horizon frames around tcs into account:
-frames_ROI = false(N_frames,1);
-for i = 2:(options.horizon)+1
-    %shift to the left
-    frames_ROI(1:end-i+1) = frames_ROI(1:end-i+1) | frames_ROI_tmp(i:end);
-    %shift to the right:
-    frames_ROI(i:end) = frames_ROI(i:end) | frames_ROI_tmp(1:end-i+1);
-end
-clear frames_ROI_tmp
-
+[ frames_ROI ] = fillvector( squeeze(sum(sum(tcs))) >= 1, options.horizon );
 
 %ROI selection in space:
 %first set those channels to zero that do not reach the activity threshold:
@@ -122,18 +113,18 @@ fprintf('Found activity on %g of %g input channels.\n',nnz(act_chs),N_row*N_col)
 %select rectangular box around activity channels:
 data_ROI = data(min(rows):max(rows),min(cols):max(cols),:);
 X_ROI = reshape(data_ROI, [size(data_ROI,1)*size(data_ROI,2) size(data_ROI,3)]);
-sensor_rows_ROI = [sensor_rows(min(rows):max(rows))];
-sensor_cols_ROI = [sensor_cols(min(cols):max(cols))];
-
-%Plotting
-figure;imagesc(activity);axis('image');colorbar;
-hold on; plot(cols, rows,'go');
-plot([min(cols)-0.5 max(cols)+0.5], [min(rows)-0.5 min(rows)-0.5],'w');
-plot([min(cols)-0.5 max(cols)+0.5], [max(rows)+0.5 max(rows)+0.5],'w');
-plot([min(cols)-0.5 min(cols)-0.5], [min(rows)-0.5 max(rows)+0.5],'w');
-plot([max(cols)+0.5 max(cols)+0.5], [min(rows)-0.5 max(rows)+0.5],'w');
+sensor_rows_ROI = sensor_rows(min(rows):max(rows));
+sensor_cols_ROI = sensor_cols(min(cols):max(cols));
 
 
+if plotting
+    figure;imagesc(activity);axis('image');colorbar;
+    hold on; plot(cols, rows,'go');
+    plot([min(cols)-0.5 max(cols)+0.5], [min(rows)-0.5 min(rows)-0.5],'w');
+    plot([min(cols)-0.5 max(cols)+0.5], [max(rows)+0.5 max(rows)+0.5],'w');
+    plot([min(cols)-0.5 min(cols)-0.5], [min(rows)-0.5 max(rows)+0.5],'w');
+    plot([max(cols)+0.5 max(cols)+0.5], [min(rows)-0.5 max(rows)+0.5],'w');
+end
 
 
 end

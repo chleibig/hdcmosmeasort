@@ -22,6 +22,7 @@ diary logfile_cICAsort.txt
 sensor_rows = dataset.sensorRows;
 sensor_cols = dataset.sensorCols;
 sr = dataset.sr;
+frameStartTimes = dataset.frameStartTimes;
 pitch = dataset.sensorPitch; %in µm
 
 d_sensor_row = double(sensor_rows(2) - sensor_rows(1)); %in coord
@@ -45,22 +46,25 @@ neuron_rho = input('Please specify the expected neuron density in mm⁻²: ');
 % Default arguments
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 
-%ROI identification:
+%ROI segmentation:
+
+par.roi.method = 'cog';
+par.roi.minNoEvents = 15;
 if d_sensor_col == 2 && d_sensor_row == 1
-    options.thr_factor = 10.95;
-    options.n_rows = 5;
-    options.n_cols = 3;
-    options.n_frames = 3;
+    par.roi.thr_factor = 10.95;
+    par.roi.n_rows = 5;
+    par.roi.n_cols = 3;
+    par.roi.n_frames = 3;
 elseif d_sensor_col == d_sensor_row
-    options.thr_factor = 9.5;
-    options.n_rows = 3;
-    options.n_cols = 3;
-    options.n_frames = 3;
+    par.roi.thr_factor = 9.5;
+    par.roi.n_rows = 3;
+    par.roi.n_cols = 3;
+    par.roi.n_frames = 3;
 else
     error(strcat('Unknown readout configuration.\n',...
     'Please check parameters for ROI identification'));
 end
-options.horizon = floor(sr/2);%~0.5 ms to the left and to the right
+par.roi.horizon = floor(sr);%~1 ms to the left and to the right
 %of detected activity is taken for the temporal ROI
 
 %fastICA parameters:
@@ -103,7 +107,6 @@ grouping = 'cluster';
 max_cluster_size = 4;
 max_iter = 10;
 min_no_peaks = 3;
-%maxlags = 10;
 maxlags = L;
 
 %duplicates:
@@ -137,194 +140,219 @@ t_total_1 = clock;
 % toc;
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-% ROI identification
+% ROI segmentation
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 
-[ X_ROI, sensor_rows_ROI, sensor_cols_ROI, frames_ROI, act_chs] = ...
-            ROIIdentification(data, sensor_rows, sensor_cols,options);
+% [ X_ROI, sensor_rows_ROI, sensor_cols_ROI, frames_ROI, act_chs] = ...
+%             ROIIdentification(data, sensor_rows, sensor_cols,par.roi);
 
+metaData.sensor_rows = sensor_rows;
+metaData.sensor_cols = sensor_cols;
+metaData.sr = sr;
+metaData.frameStartTimes = frameStartTimes;
+metaData.filename_events = ...
+    strcat(filename(1:strfind(filename, '.h5')-1),'.events');
 
-%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-% Preprocessing with fastICA
-%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-
-par.ica.frames = frames_ROI;
-par.ica.channels = act_chs;
-
-par.ica.numOfIC = ceil(par.ica.cpn/(sensor_rho/neuron_rho) * ...
-    nnz(par.ica.channels));
-
-[S, A, W, par.ica] = fasticanode(X_ROI,par.ica);
+ROIs = roisegmentation(data, metaData, par.roi, 1);
 
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-% Convolutive ICA
+% Separate treatment of each region of interest
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 
-if do_cICA
-    %Initialize lagged filters:
-    A_tau = zeros(size(X_ROI,1),size(A,2));
-    A_tau(act_chs,:) = A;
-    A_tau(:,:,2:L+1) = 0;
+for i = 1:length(ROIs)
+    X_ROI = ROIs(i).X;
+    sensor_rows_ROI = ROIs(i).sensor_rows;
+    sensor_cols_ROI = ROIs(i).sensor_cols;
+    frames_ROI = ROIs(i).T_mask;
+    act_chs = ROIs(i).N_mask;
 
-    if allframes_cica
-        frames_ROI_cica = true(size(X_ROI,2),1);
+
+    %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+    % Preprocessing with fastICA
+    %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+
+    par.ica.frames = frames_ROI;
+    par.ica.channels = act_chs;
+
+    par.ica.numOfIC = ceil(par.ica.cpn/(sensor_rho/neuron_rho) * ...
+        nnz(par.ica.channels));
+
+    [S, A, W, par.ica] = fasticanode(X_ROI,par.ica);
+
+
+    %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+    % Convolutive ICA
+    %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+
+    if do_cICA
+        %Initialize lagged filters:
+        A_tau = zeros(size(X_ROI,1),size(A,2));
+        A_tau(act_chs,:) = A;
+        A_tau(:,:,2:L+1) = 0;
+
+        if allframes_cica
+            frames_ROI_cica = true(size(X_ROI,2),1);
+        else
+            frames_ROI_cica = frames_ROI;
+        end
+
+        %Perform convolutive ICA:
+        t1 = clock;
+        [S, A_tau, S_noise, A_noise] = ConvolutiveICA(S,L,A_tau,sr,...
+            d_row,d_col,length(sensor_rows_ROI),length(sensor_cols_ROI),d_max,...
+            frames_ROI_cica,do_cICA,'M',M,'maxlags',maxlags,...
+            'plotting',plotting,'min_skewness',min_skewness,'min_corr',min_corr,...
+            'approach',grouping,'max_cluster_size',max_cluster_size,...
+            'max_iter',max_iter,'min_no_peaks',min_no_peaks,...
+            't_s',t_s,'t_jitter',t_jitter, 'coin_thr',coin_thr);
+        t2 = clock;
+        fprintf('convolutive ICA step performed in %g seconds\n',etime(t2,t1));
     else
-        frames_ROI_cica = frames_ROI;
+        fprintf('Convolutive ICA is not applied!\n');
     end
 
-    %Perform convolutive ICA:
+    %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+    % Check for noisy components
+    %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+
+    % if convolutive ICA was not applied, we need to initialize some variables:
+    if exist('A_noise','var') ~= 1; A_noise = []; end
+    if exist('S_noise','var') ~= 1; S_noise = []; end
+    if exist('A_tau','var') ~= 1
+        A_tau = zeros(size(X_ROI,1),size(A,2));
+        A_tau(act_chs,:) = A;
+        A_tau(:,:,2:L+1) = 0;
+    end
+
+    [keep] = checkfornoisycomponents(S,min_skewness,min_no_peaks,sr,plotting);
+
+    % store noisy stuff away and remove it from components and filters:
+    S_noise = [S_noise;S(~keep,:)];
+    A_noise = cat(2,A_noise,A_tau(:,~keep,:));
+    S = S(keep,:);
+    A_tau = A_tau(:,keep,:);
+
+
+    %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+    % Spike time identification
+    %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+
+    % t1 = clock;
+    % [units] = SpikeTimeIdentificationKlustaKwik(S_cica, sr,1);
+    % t2 = clock;
+    % fprintf('Spike time identification and clustering with KlustaKwik\n');
+    % fprintf('performed in %g seconds\n',etime(t2,t1));
+
     t1 = clock;
-    [S, A_tau, S_noise, A_noise] = ConvolutiveICA(S,L,A_tau,sr,...
-        d_row,d_col,length(sensor_rows_ROI),length(sensor_cols_ROI),d_max,...
-        frames_ROI_cica,do_cICA,'M',M,'maxlags',maxlags,...
-        'plotting',plotting,'min_skewness',min_skewness,'min_corr',min_corr,...
-        'approach',grouping,'max_cluster_size',max_cluster_size,...
-        'max_iter',max_iter,'min_no_peaks',min_no_peaks,...
-        't_s',t_s,'t_jitter',t_jitter, 'coin_thr',coin_thr);
+    [units] = SpikeTimeIdentificationHartigan(S, sr,sign_lev,1,1);
     t2 = clock;
-    fprintf('convolutive ICA step performed in %g seconds\n',etime(t2,t1));
-else
-    fprintf('Convolutive ICA is not applied!\n');
-end
-
-%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-% Check for noisy components
-%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-
-% if convolutive ICA was not applied, we need to initialize some variables:
-if exist('A_noise','var') ~= 1; A_noise = []; end
-if exist('S_noise','var') ~= 1; S_noise = []; end
-if exist('A_tau','var') ~= 1
-    A_tau = zeros(size(X_ROI,1),size(A,2));
-    A_tau(act_chs,:) = A;
-    A_tau(:,:,2:L+1) = 0;
-end
-
-[keep] = checkfornoisycomponents(S,min_skewness,min_no_peaks,sr,plotting);
- 
-% store noisy stuff away and remove it from components and filters:
-S_noise = [S_noise;S(~keep,:)];
-A_noise = cat(2,A_noise,A_tau(:,~keep,:));
-S = S(keep,:);
-A_tau = A_tau(:,keep,:);
-
-
-%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-% Spike time identification
-%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-
-% t1 = clock;
-% [units] = SpikeTimeIdentificationKlustaKwik(S_cica, sr,1);
-% t2 = clock;
-% fprintf('Spike time identification and clustering with KlustaKwik\n');
-% fprintf('performed in %g seconds\n',etime(t2,t1));
-
-t1 = clock;
-[units] = SpikeTimeIdentificationHartigan(S, sr,sign_lev,1,1);
-t2 = clock;
-fprintf('Spike time identification with Hartigans dip test\n');
-fprintf('performed in %g seconds\n',etime(t2,t1));
+    fprintf('Spike time identification with Hartigans dip test\n');
+    fprintf('performed in %g seconds\n',etime(t2,t1));
 
 
 
-%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-% Collecting preliminary results
-%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+    %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+    % Collecting preliminary results
+    %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 
-data_tmp = reshape(X_ROI,...
-    [length(sensor_rows_ROI) length(sensor_cols_ROI) size(X_ROI,2)]);
-for k = 1:length(units)
-    units(k).A_tau = A_tau(:,k,:);
-    %Consider to calculate STAs only based on "non-coincident" spikes!
-    units(k).STA = GetSTA(data_tmp, units(k).time, sr, 0);
-    [row_max,col_max] = find(max(abs(units(k).STA),[],3)...
-                        == max(max(max(abs(units(k).STA)))));
-    units(k).boss_row = sensor_rows_ROI(row_max);
-    units(k).boss_col = sensor_cols_ROI(col_max);                
-end
-clear data_tmp
+    data_tmp = reshape(X_ROI,...
+        [length(sensor_rows_ROI) length(sensor_cols_ROI) size(X_ROI,2)]);
+    for k = 1:length(units)
+        units(k).A_tau = A_tau(:,k,:);
+        %Consider to calculate STAs only based on "non-coincident" spikes!
+        units(k).STA = GetSTA(data_tmp, units(k).time, sr, 0);
+        [row_max,col_max] = find(max(abs(units(k).STA),[],3)...
+            == max(max(max(abs(units(k).STA)))));
+        units(k).boss_row = sensor_rows_ROI(row_max);
+        units(k).boss_col = sensor_cols_ROI(col_max);
+    end
+    clear data_tmp
 
 
-%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-% Remove duplicates
-%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+    %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+    % Remove duplicates
+    %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 
-t1 = clock;
-fprintf('Checking for duplicates...\n');
-[duplicate_pairs] = CheckForDuplicates(units, sr, ...
-                                       t_s, t_jitter, coin_thr, sim_thr,1);
-N_dupl = size(duplicate_pairs,1);
-t2 = clock;
-fprintf('found %g duplicates in %g seconds\n',N_dupl,etime(t2,t1));
+    t1 = clock;
+    fprintf('Checking for duplicates...\n');
+    [duplicate_pairs] = CheckForDuplicates(units, sr, ...
+        t_s, t_jitter, coin_thr, sim_thr,1);
+    N_dupl = size(duplicate_pairs,1);
+    t2 = clock;
+    fprintf('found %g duplicates in %g seconds\n',N_dupl,etime(t2,t1));
 
-if ~isempty(duplicate_pairs)
+    if ~isempty(duplicate_pairs)
+        remove = false(length(units),1);
+        remove(duplicate_pairs(:,1)) = true;
+        units_dupl = units(remove);
+        S_dupl = S(remove,:);
+        A_dupl = [];
+        A_dupl = cat(2,A_dupl,units(remove).A_tau);
+        units = units(~remove);
+        S = S(~remove,:);
+        A_tau = A_tau(:,~remove,:);
+        clear remove
+    else
+        units_dupl = [];
+        S_dupl = [];
+        A_dupl = [];
+    end
+
+
+    %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+    % Choose finally accepted units
+    %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+
+    %Just for visualization purposes:
+    SpikeTimeIdentificationHartigan(S, sr,sign_lev,1,0);
+
+    fprintf('Please examine found units.\n');
+    keyboard;
+    remove_IDs = input('Please specify all units to delete by their IDs in a vector:\n');
+
     remove = false(length(units),1);
-    remove(duplicate_pairs(:,1)) = true;
-    units_dupl = units(remove);
-    S_dupl = S(remove,:);
-    A_dupl = [];
-    A_dupl = cat(2,A_dupl,units(remove).A_tau);
-    units = units(~remove);
+    remove(remove_IDs) = true;
+
+    S_noise = [S_noise;S(remove,:)];
+    A_noise = cat(2,A_noise,units(remove).A_tau);
     S = S(~remove,:);
+    units = units(~remove);
     A_tau = A_tau(:,~remove,:);
     clear remove
-else
-    units_dupl = [];
-    S_dupl = [];
-    A_dupl = [];
-end
+
+    %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+    % Collecting final results
+    %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+
+    if size(A_tau,2) ~= size(S,1)
+        error('Something went wrong!');
+    end
+
+    %This time with interactive thresholding:
+    sign_lev_man = input('Specify significance level for unimodality:');
+    [units] = SpikeTimeIdentificationHartigan(S, sr,sign_lev_man,1,1);
+
+    data_tmp = reshape(X_ROI,...
+        [length(sensor_rows_ROI) length(sensor_cols_ROI) size(X_ROI,2)]);
+    for k = 1:length(units)
+        units(k).A_tau = A_tau(:,k,:);
+        %Consider to calculate STAs only based on "non-coincident" spikes!
+        units(k).STA = GetSTA(data_tmp, units(k).time, sr, 0);
+        [row_max,col_max] = find(max(abs(units(k).STA),[],3)...
+            == max(max(max(abs(units(k).STA)))));
+        units(k).boss_row = sensor_rows_ROI(row_max);
+        units(k).boss_col = sensor_cols_ROI(col_max);
+    end
+    clear data_tmp
 
 
-%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-% Choose finally accepted units
-%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-
-%Just for visualization purposes:
-SpikeTimeIdentificationHartigan(S, sr,sign_lev,1,0);
-
-fprintf('Please examine found units.\n');
-keyboard;
-remove_IDs = input('Please specify all units to delete by their IDs in a vector:\n');
-
-remove = false(length(units),1);
-remove(remove_IDs) = true;
-
-S_noise = [S_noise;S(remove,:)];
-A_noise = cat(2,A_noise,units(remove).A_tau);
-S = S(~remove,:);
-units = units(~remove);
-A_tau = A_tau(:,~remove,:);
-clear remove
-
-%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-% Collecting final results
-%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-
-if size(A_tau,2) ~= size(S,1)
-    error('Something went wrong!');
-end
-
-%This time with interactive thresholding:
-sign_lev_man = input('Specify significance level for unimodality:');
-[units] = SpikeTimeIdentificationHartigan(S, sr,sign_lev_man,1,1);
-
-data_tmp = reshape(X_ROI,...
-    [length(sensor_rows_ROI) length(sensor_cols_ROI) size(X_ROI,2)]);
-for k = 1:length(units)
-    units(k).A_tau = A_tau(:,k,:);
-    %Consider to calculate STAs only based on "non-coincident" spikes!
-    units(k).STA = GetSTA(data_tmp, units(k).time, sr, 0);
-    [row_max,col_max] = find(max(abs(units(k).STA),[],3)...
-                        == max(max(max(abs(units(k).STA)))));
-    units(k).boss_row = sensor_rows_ROI(row_max);
-    units(k).boss_col = sensor_cols_ROI(col_max);                
-end
-clear data_tmp
+    fprintf('Another chance to inspect final results before they are saved.\n');
+    keyboard;
 
 
-fprintf('Another chance to inspect final results before they are saved.\n');
-keyboard;
+end %end loop over regions of interest
+
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 % Save results
