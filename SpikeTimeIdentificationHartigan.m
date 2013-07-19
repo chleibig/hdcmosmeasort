@@ -60,6 +60,7 @@ for i=1:N_comp;
                     end
                 end
             end
+            fprintf('Threshold of component %g adapted!\n',i);
             units(i).time = indices_adap/sr;
             units(i).amplitude = X(i,indices_adap);
         else

@@ -40,7 +40,7 @@ if params.estimate
     t1 = clock;
     fprintf('Estimating number of instantaneous components...\n');
     [A, W] = fastica(X(params.channels,params.frames),...
-        'g', params.nonlinearity,'approach','defl','verbose','off');
+        'g', params.nonlinearity,'approach','defl','verbose',params.verbose);
     
     %0.8 is empirical, because 1.0 was found to exhibit convergence problems
     params.numOfIC = round(0.8 * size(W,1));
@@ -55,7 +55,8 @@ end
 %only that many dimensions such that params.per_var of the variance
 %gets explained:
 t1 = clock;
-[pcaE, pcaD] = fastica(X(params.channels, params.frames),'only','pca');
+[pcaE, pcaD] = fastica(X(params.channels, params.frames),'only','pca',...
+    'verbose',params.verbose);
 t2 = clock;
 fprintf('PCA performed in %g seconds.\n',etime(t2,t1));
 
@@ -73,8 +74,7 @@ t1 = clock;
 [A, W] = fastica(X(params.channels, params.frames),...
     'g',params.nonlinearity,'approach',params.approach,...
     'numOfIC',params.numOfIC,'pcaE', pcaE,...
-    'pcaD', pcaD);%,...
-    %'lastEig',nEig);
+    'pcaD', pcaD,'verbose',params.verbose);
 %Compute the source activations over all samples T
 S_ica = W*X(params.channels,:);
 t2 = clock;

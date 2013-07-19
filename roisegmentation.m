@@ -93,7 +93,7 @@ switch paramsRoi.method
         end
         
         if show
-            figure;
+            figure;colormap('gray');
             BackgroundAxes = axes('visible', 'off', 'units', 'normalized', 'Position', [0,0,1,1]);
             text(0.5, 0.99, 'Regions of interest', 'Parent', BackgroundAxes , ...
                 'HorizontalAlignment','center', ...
@@ -102,13 +102,13 @@ switch paramsRoi.method
             set(gca,'Xtick',1:allRoi.NumObjects, 'Ytick',1:allRoi.NumObjects);
             for i = 1:allRoi.NumObjects
                 subplot(pltsize,pltsize,i);
-                imshow(reshape(ROIs(i).N_mask,...
+                imagesc(reshape(ROIs(i).N_mask,...
                     [length(ROIs(i).sensor_rows) length(ROIs(i).sensor_cols)]));
-                set(gca,'XTickLabel',ROIs(i).sensor_cols);
-                set(gca,'YTickLabel',ROIs(i).sensor_rows);
-                %                 xlabel('sensor rows');
-                %                 ylabel('sensor cols');
-                title(strcat(num2str(i),': ',num2str(length(ROIs(i).time)),' events'));
+                set(gca,'XTickLabel',ROIs(i).sensor_cols(get(gca,'XTick')));
+                xlabel('sensor rows');
+                set(gca,'YTickLabel',ROIs(i).sensor_rows(get(gca,'YTick')));
+                ylabel('sensor cols');
+                title(strcat(num2str(i),': ',num2str(length(ROIs(i).time)),' events')); 
             end
         end
         

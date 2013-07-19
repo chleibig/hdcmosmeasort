@@ -1,6 +1,6 @@
 function [duplicate_pairs] = CheckForDuplicates(units, sr, ...
                                            t_s, t_jitter, coin_thr,...
-                                           sim_thr, interactive)
+                                           sim_thr, show, interactive)
 %CheckForDuplicates tests units pairwisely whether they
 %are duplicates or not based on the following criteria:
 %
@@ -86,7 +86,7 @@ for i=1:N
 end
 
 
-if interactive
+if show
    figure; 
    %this is for debug purposes and to assess suitable threshold parameters
    subplot(2,2,1);imagesc(coin_frac);colorbar;
@@ -105,7 +105,9 @@ if interactive
    subplot(2,2,4);hist(sim(:));
    xlabel('c_{ij}');
    ylabel('counts');
+end
 
+if interactive
    coin_thr = input('Please specify the minimum fraction of coincident spikes for duplicates:');
    sim_thr = input('Please specify the minimum similarity of STAs for duplicates:');
 end
