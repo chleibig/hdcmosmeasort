@@ -43,7 +43,7 @@ clear dataset
 
 
 %general:
-plotting = 0;
+plotting = 1;
 interactive = 0;
 
 %Tissue specs:
@@ -53,7 +53,7 @@ if interactive
 end
     
 %ROI segmentation:
-par.roi.method = 'cog';
+par.roi.method = 'tce';
 par.roi.minNoEvents = 15;
 if d_sensor_col == 2 && d_sensor_row == 1
     par.roi.thr_factor = 10.95;
@@ -160,7 +160,7 @@ metaData.frameStartTimes = frameStartTimes;
 metaData.filename_events = ...
     strcat(filename(1:strfind(filename, '.h5')-1),'.events');
 
-ROIs = roisegmentation(data, metaData, par.roi, 1);
+[ROIs, OL] = roisegmentation(data, metaData, par.roi, 1);
 
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
@@ -286,7 +286,7 @@ for i = 1:length(ROIs)
 
     t1 = clock;
     fprintf('Checking for duplicates...\n');
-    [duplicate_pairs] = CheckForDuplicates(units, sr, ...
+    [duplicate_pairs] = checkforintraroiduplicates(units, sr, ...
         t_s, t_jitter, coin_thr, sim_thr, plotting, interactive);
     N_dupl = size(duplicate_pairs,1);
     t2 = clock;
@@ -387,6 +387,14 @@ for i = 1:length(ROIs)
     
 
 end %end loop over regions of interest
+
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+% Combine results of different ROIs
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+
+fprintf('Combining results of different regions of interest...\n');
+
 
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%

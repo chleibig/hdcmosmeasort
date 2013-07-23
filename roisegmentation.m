@@ -1,4 +1,4 @@
-function [ROIs] = roisegmentation(data, metaData, paramsRoi, show)
+function [ROIs, OL] = roisegmentation(data, metaData, paramsRoi, show)
 %roisegmentation segments data into regions of interest
 %
 % Input
@@ -41,6 +41,9 @@ function [ROIs] = roisegmentation(data, metaData, paramsRoi, show)
 %        *.T_mask - (T x 1) boolean vector for temporal subset
 %        selection
 %
+%  OL -  (N_ROI x N_ROI) matrix with OL(k,l) being the fraction of
+%        pixels being shared by the k-th and l-th region of interest
+%
 % christian.leibig@g-node.org, 16.07.13
 %
 
@@ -52,6 +55,7 @@ switch paramsRoi.method
             ROIs.T_mask, ROIs.N_mask ] = ...
             ROIIdentification(data, metaData.sensor_rows,...
             metaData.sensor_cols,paramsRoi, show);
+        OL = [];
     case 'cog'
         [allRoi] = CoG_ROIs(metaData.filename_events,paramsRoi.minNoEvents,...
             max(metaData.sensor_rows), max(metaData.sensor_cols));
@@ -91,7 +95,8 @@ switch paramsRoi.method
             ROIs(i).T_mask(frameIdx) = true;
             ROIs(i).T_mask = fillvector( ROIs(i).T_mask, paramsRoi.horizon);
         end
-        
+        %overlap between rois:
+        [ OL ] = roioverlap( allRoi.PixelIdxList );
         if show
             figure;colormap('gray');
             BackgroundAxes = axes('visible', 'off', 'units', 'normalized', 'Position', [0,0,1,1]);
@@ -108,8 +113,17 @@ switch paramsRoi.method
                 xlabel('sensor rows');
                 set(gca,'YTickLabel',ROIs(i).sensor_rows(get(gca,'YTick')));
                 ylabel('sensor cols');
-                title(strcat(num2str(i),': ',num2str(length(ROIs(i).time)),' events')); 
+                title(strcat(num2str(i),': ',num2str(length(ROIs(i).time)),' events'));
             end
+            
+            figure;
+            imagesc(OL);
+            title(strcat('fraction of shared sensors (',...
+                num2str(nnz(triu(OL))),' pairs > 0)'));
+            xlabel('ROI index');
+            ylabel('ROI index');
+            axis square;
+            colorbar;
         end
         
         
