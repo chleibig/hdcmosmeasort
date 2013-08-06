@@ -1,6 +1,6 @@
 function [keep] = checkfornoisycomponents(X,minSkew,minNoPeaks,sr,show)
 %checkfornoisycomponents tests row vectors of X for
-%both a minimum skewness and minimum number of peaks
+%both a minimum skewness and minimum number of (negative) peaks
 %
 % Input
 % =====
@@ -18,16 +18,18 @@ function [keep] = checkfornoisycomponents(X,minSkew,minNoPeaks,sr,show)
 % keep - boolean vector, positions of components that are at least minSkew
 %        skewed and show at least minNoPeaks peaks are assigned true 
 %
-% christian.leibig@g-node.org, 16.07.13
+% christian.leibig@g-node.org, 16.07.13, changed 06.08.13
 %
 
 % 1. set mask based on skewness and presence of peaks criteria
 skewn = skewness(X');
+%correct skewness:
+X(skewn > 0,:) = -1 * X(skewn > 0,:);
 %assess number of peaks in each component:
 n_peaks = zeros(1,size(X,1));
 
 for i = 1:size(X,1)
-    [indices, peaks] = find_peaks(abs(X(i,:)),...
+    [indices, peaks] = find_peaks(-X(i,:),...
         5*median(abs(X(i,:))/0.6745),ceil(sr));
     n_peaks(i) = length(peaks);
 end
