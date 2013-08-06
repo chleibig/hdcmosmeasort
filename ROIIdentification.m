@@ -87,8 +87,6 @@ else
        title('hist(|V_{env}|)');
        xlabel('V_{env}');
        ylabel('counts');
-       keyboard;
-       thr_factor = input('Please specify a threshold |V_0| for activity detection: ');
     end
 
     tcs = (V_env > thr_factor^2);

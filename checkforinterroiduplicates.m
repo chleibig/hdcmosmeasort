@@ -1,19 +1,20 @@
-function [duplicate_pairs, lessSpikes] = checkforinterroiduplicates(nUnits,mUnits, sr, ...
-                                           t_s, t_jitter, coin_thr,...
+function [duplicate_pairs, nDupl, mDupl] = checkforinterroiduplicates(nUnits,mUnits, sr, ...
+                                           data, t_s, t_jitter, coin_thr,...
                                            sim_thr, show, interactive)
 %checkforinterroiduplicates tests all units in nUnits pairwisely against all units
 %in mUnits whether they are duplicates or not based on the following criteria:
 %
 % 1. They have more than coin_thr spikes in common
 %
-% 2. Their STAs are more similar than sim_thr (similarity is measured
-% via their normalized scalar product)
+% 2. Their STAs (calculated on data) are more similar than sim_thr
+%    (similarity is measured via their normalized scalar product)
 %
 % INPUT:
 % 
-% nUnits: array of structs with at least the fields "time" and "STA"
+% nUnits: array of structs with at least the field "time"
 % mUnits: the same as nUnits, but containing DIFFERENT UNITS!
 % sr: sampling rate in kHz
+% data - (N_ROW x N_COL x N_FRAMES) array 
 % t_s: maximal overall, pairwise shift of spiketrains to detect coincident
 %      spikes in ms
 % t_jitter: two spikes are considered as coincident if they are maximally
@@ -27,10 +28,16 @@ function [duplicate_pairs, lessSpikes] = checkforinterroiduplicates(nUnits,mUnit
 %                  were found to be duplicates; j-th duplicate is made up
 %                  by nUnits(duplicate_pairs(j,1)) and
 %                  mUnits(duplicate_pairs(j,2))
+%
+% 
 % lessSpikes: binary mask of the same format as duplicate_pairs. The
 %             unit that contributes with less spikes is indicated as follows:
-%             lessSpikes(j,:) = [1 0] <-> nUnits(duplicate_pairs(j,1))
-%             lessSpikes(j,:) = [0 1] <-> mUnits(duplicate_pairs(j,2))
+%             lessSpikes(j,:) = [true false] <-> nUnits(duplicate_pairs(j,1))
+%             lessSpikes(j,:) = [false true] <-> mUnits(duplicate_pairs(j,2))
+%             
+% nDupl - vector of indices specifying duplicate positions in vector nUnits
+% mDupl - vector of indices specifying duplicate positions in vector mUnits
+
 %
 %
 % author: Christian Leibig, 19.03.13, adapted 22.07.13
@@ -75,11 +82,14 @@ end
 sim = zeros(N,M);
 for n=1:N
     for m=1:M
+        %Calculate STAs on the fly:
+        STAn = GetSTA(data,nUnits(n).time,sr,0);
+        STAm = GetSTA(data,mUnits(m).time,sr,0);
+        STAn = reshape(STAn,...
+         [size(STAn,1)*size(STAn,2) size(STAn,3)]);
+        STAm = reshape(STAm,...
+         [size(STAm,1)*size(STAm,2) size(STAm,3)]);
         %temporal alignment on peaks:
-        STAn = reshape(nUnits(n).STA,...
-         [size(nUnits(n).STA,1)*size(nUnits(n).STA,2) size(nUnits(n).STA,3)]);
-        STAm = reshape(mUnits(m).STA,...
-         [size(mUnits(m).STA,1)*size(mUnits(m).STA,2) size(mUnits(m).STA,3)]);
         [n_v_p,n_p] = max(max(abs(STAn),[],1));
         [m_v_p, m_p] = max(max(abs(STAm),[],1));
         shift = abs(n_p - m_p);
@@ -131,7 +141,7 @@ coin_frac_tmp = coin_frac;
 sim_tmp = sim;
 
 duplicate_pairs = [];
-lessSpikes = [];
+lessSpikes = logical([]);
 
 continue_to_check = true;
 
@@ -165,13 +175,13 @@ while continue_to_check
             %subsequent checks:
             if length(nUnits(I).time) >= length(mUnits(J).time)
                 %mUnits(J) ought to be removed
-                lessSpikes = [lessSpikes; 0 1];
+                lessSpikes = [lessSpikes; false true];
                 %-> Ignore J-th columns: 
                 sim_tmp(:,J) = 0;
                 coin_frac_tmp(:,J) = 0;
             else
                 %nUnits(I) ought to be removed
-                lessSpikes = [lessSpikes; 1 0];
+                lessSpikes = [lessSpikes; true false];
                 %-> ignore I-th rows:
                 sim_tmp(I,:) = 0;
                 coin_frac_tmp(I,:) = 0;
@@ -189,5 +199,14 @@ while continue_to_check
     
     end    
 end
+
+if ~isempty(duplicate_pairs)
+    nDupl = duplicate_pairs(lessSpikes(:,1),1);
+    mDupl = duplicate_pairs(lessSpikes(:,2),2);
+else
+    nDupl = [];
+    mDupl = [];
+end
+
 
 end

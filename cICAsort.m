@@ -1,4 +1,4 @@
-function [ ROIs ] = cICAsort(filename)
+function [ ROIs ] = cICAsort(filename, filenameEvents)
 %cICAsort perform spike sorting of high density array data
 %based on convolutive ICA
 
@@ -43,18 +43,18 @@ clear dataset
 
 
 %general:
-plotting = 1;
+plotting =  0;
 interactive = 0;
 
 %Tissue specs:
-neuron_rho = 1500; %in mm⁻²
+neuron_rho = 1000; %in mm⁻²
 if interactive
     neuron_rho = input('Please specify the expected neuron density in mm⁻²: ');
 end
     
 %ROI segmentation:
-par.roi.method = 'tce';
-par.roi.minNoEvents = 15;
+par.roi.method = 'cog';
+par.roi.minNoEvents = 3;
 if d_sensor_col == 2 && d_sensor_row == 1
     par.roi.thr_factor = 10.95;
     par.roi.n_rows = 5;
@@ -84,7 +84,7 @@ par.ica.allchannels = false; %if true, all channels are used
 %roi identification
 par.ica.nonlinearity = 'pow3';
 par.ica.estimate = false;
-par.ica.cpn  = 3; %components per neuron for later use to calculate
+par.ica.cpn  = 1; %components per neuron for later use to calculate
 %par.ica.numOfIC (overwritten, if params.estimate is true)
 par.ica.per_var = 1; %keep that many dimensions such that per_var of the
 %total variance gets explained
@@ -114,7 +114,7 @@ min_corr = 0.1;
 grouping = 'cluster';
 max_cluster_size = 4;
 max_iter = 10;
-min_no_peaks = 3;
+min_no_peaks = 5;
 maxlags = L;
 
 
@@ -157,10 +157,9 @@ metaData.sensor_rows = sensor_rows;
 metaData.sensor_cols = sensor_cols;
 metaData.sr = sr;
 metaData.frameStartTimes = frameStartTimes;
-metaData.filename_events = ...
-    strcat(filename(1:strfind(filename, '.h5')-1),'.events');
+metaData.filename_events = filenameEvents;
 
-[ROIs, OL] = roisegmentation(data, metaData, par.roi, 1);
+[ROIs, OL] = roisegmentation(data, metaData, par.roi, plotting);
 
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
@@ -227,9 +226,9 @@ for i = 1:length(ROIs)
     %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 
     %if convolutive ICA was not applied, we need to initialize some variables:
-    if exist('A_noise','var') ~= 1; A_noise = []; end
-    if exist('S_noise','var') ~= 1; S_noise = []; end
-    if exist('A_tau','var') ~= 1
+    if ~exist('A_noise','var'); A_noise = []; end
+    if ~exist('S_noise','var'); S_noise = []; end
+    if ~exist('A_tau','var')
         A_tau = zeros(size(X,1),size(A,2));
         A_tau(N_mask,:) = A;
         A_tau(:,:,2:L+1) = 0;
@@ -254,10 +253,10 @@ for i = 1:length(ROIs)
     % fprintf('Spike time identification and clustering with KlustaKwik\n');
     % fprintf('performed in %g seconds\n',etime(t2,t1));
 
+    fprintf('Spike time identification with Hartigans dip test\n');
     t1 = clock;
     [units] = SpikeTimeIdentificationHartigan(S, sr,sign_lev,plotting,interactive);
     t2 = clock;
-    fprintf('Spike time identification with Hartigans dip test\n');
     fprintf('performed in %g seconds\n',etime(t2,t1));
 
 
@@ -290,7 +289,8 @@ for i = 1:length(ROIs)
         t_s, t_jitter, coin_thr, sim_thr, plotting, interactive);
     N_dupl = size(duplicate_pairs,1);
     t2 = clock;
-    fprintf('found %g duplicates in %g seconds\n',N_dupl,etime(t2,t1));
+    fprintf('found %g intraregional duplicates in %g seconds\n',...
+        N_dupl,etime(t2,t1));
 
     if ~isempty(duplicate_pairs)
         remove = false(length(units),1);
@@ -393,15 +393,22 @@ end %end loop over regions of interest
 % Combine results of different ROIs
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 
-fprintf('Combining results of different regions of interest...\n');
-
-
+fprintf('\nCombining results of different regions of interest...\n');
+if length(ROIs) > 1
+    t1 = clock;
+    [ROIs, N_INTER_ROI_DUPL] = combinerois(ROIs, OL, sr, data,...
+        sensor_rows, sensor_cols, t_s, t_jitter, coin_thr, sim_thr,...
+        plotting, interactive);
+    t2 = clock;    
+    fprintf('found %g interregional duplicates in %g seconds\n',...
+        N_INTER_ROI_DUPL,etime(t2,t1));
+end
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 % Save results
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 
-%SaveResults(filename, units);   
+SaveResults(filename, ROIs);   
     
 t_total_2 = clock;
 fprintf('Total cICAsort performed in %g seconds\n',etime(t_total_2,t_total_1));
