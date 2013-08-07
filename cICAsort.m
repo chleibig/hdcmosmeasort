@@ -43,7 +43,7 @@ clear dataset
 
 
 %general:
-plotting =  0;
+plotting =  1;
 interactive = 0;
 
 %Tissue specs:
@@ -53,7 +53,7 @@ if interactive
 end
     
 %ROI segmentation:
-par.roi.method = 'cog';
+par.roi.method = 'tce';
 par.roi.minNoEvents = 3;
 if d_sensor_col == 2 && d_sensor_row == 1
     par.roi.thr_factor = 10.95;
@@ -82,13 +82,13 @@ par.ica.allchannels = false; %if true, all channels are used
 %par.ica.channels - boolean array of length M, indicating the channels
 %to be used (overwritten, if allchannels is true) gets assigned after
 %roi identification
-par.ica.nonlinearity = 'pow3';
+par.ica.nonlinearity = 'skew';
 par.ica.estimate = false;
 par.ica.cpn  = 1; %components per neuron for later use to calculate
 %par.ica.numOfIC (overwritten, if params.estimate is true)
 par.ica.per_var = 1; %keep that many dimensions such that per_var of the
 %total variance gets explained
-par.ica.approach = 'defl';
+par.ica.approach = 'symm';
 par.ica.verbose = 'off';
 
 %convolutive ICA:
