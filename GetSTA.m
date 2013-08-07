@@ -1,4 +1,4 @@
-function [STA] = GetSTA(data,time,sr,show, weights)
+function [STA, varargout] = GetSTA(data,time,sr,show, weights)
 %GetSTA
 %
 % Input:
@@ -15,7 +15,11 @@ function [STA] = GetSTA(data,time,sr,show, weights)
 % Output:
 %
 % STA: (N_ROW,N_COL,FRAMES_STA) - array
-
+%
+% optinally:
+%
+% spks: (N_spks,N_ROW,N_COL,f_tot) - array containing the spks;
+%       assigned to vargout{1}
 
 [N_ROW,N_COL,N_SAMPLES] = size(data);
 
@@ -72,7 +76,8 @@ if show
 end
 
 
-
-
+if nargout > 1
+    varargout{1} = spks;
+end
 
 end

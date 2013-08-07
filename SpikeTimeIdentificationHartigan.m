@@ -43,10 +43,10 @@ for i=1:N_comp;
             title(['dip=',num2str(dip(i),3), ', p=',num2str(p(i),3)]);
         end
         if p(i) < sign_lev %adapt threshold
-            %take the smallest local minimum, which is guaranted as cts is
+            %take the biggest local minimum, which is guaranted as cts is
             %ordered according to bin_ctrs:
-            [val,ind] = min(cts);
-            thr_adap = bin_ctrs(ind);
+            [pks,locs] = findpeaks(-cts);
+            thr_adap = bin_ctrs(locs(end));
             indices_adap = indices(amplitudes < thr_adap);
             if show
                 figure(fH);plot([thr_adap thr_adap], [0 max(cts)]);

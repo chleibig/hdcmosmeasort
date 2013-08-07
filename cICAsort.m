@@ -47,7 +47,7 @@ plotting =  0;
 interactive = 0;
 
 %Tissue specs:
-neuron_rho = 1000; %in mm⁻²
+neuron_rho = 3000; %in mm⁻²
 if interactive
     neuron_rho = input('Please specify the expected neuron density in mm⁻²: ');
 end
@@ -88,7 +88,7 @@ par.ica.cpn  = 1; %components per neuron for later use to calculate
 %par.ica.numOfIC (overwritten, if params.estimate is true)
 par.ica.per_var = 1; %keep that many dimensions such that per_var of the
 %total variance gets explained
-par.ica.approach = 'symm';
+par.ica.approach = 'defl';
 par.ica.verbose = 'off';
 
 %convolutive ICA:
@@ -393,8 +393,8 @@ end %end loop over regions of interest
 % Combine results of different ROIs
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 
-fprintf('\nCombining results of different regions of interest...\n');
 if length(ROIs) > 1
+    fprintf('\nCombining results of different regions of interest...\n');
     t1 = clock;
     [ROIs, N_INTER_ROI_DUPL] = combinerois(ROIs, OL, sr, data,...
         sensor_rows, sensor_cols, t_s, t_jitter, coin_thr, sim_thr,...

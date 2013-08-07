@@ -99,6 +99,7 @@ switch paramsRoi.method
         [ OL ] = roioverlap( allRoi.PixelIdxList );
         if show
             figure;colormap('gray');
+            set(gcf,'position',get(0,'ScreenSize'));
             BackgroundAxes = axes('visible', 'off', 'units', 'normalized', 'Position', [0,0,1,1]);
             text(0.5, 0.99, 'Regions of interest', 'Parent', BackgroundAxes , ...
                 'HorizontalAlignment','center', ...
@@ -110,9 +111,9 @@ switch paramsRoi.method
                 imagesc(reshape(ROIs(i).N_mask,...
                     [length(ROIs(i).sensor_rows) length(ROIs(i).sensor_cols)]));
                 set(gca,'XTickLabel',ROIs(i).sensor_cols(get(gca,'XTick')));
-                xlabel('sensor rows');
+                xlabel('sensor cols');
                 set(gca,'YTickLabel',ROIs(i).sensor_rows(get(gca,'YTick')));
-                ylabel('sensor cols');
+                ylabel('sensor rows');
                 title(strcat(num2str(i),': ',num2str(length(ROIs(i).time)),' events'));
             end
             
