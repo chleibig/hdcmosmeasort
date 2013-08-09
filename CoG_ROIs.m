@@ -1,5 +1,5 @@
 function [ROI, varargout] = ...
-    CoG_ROIs(filename_events,minAct,N_ROWS, N_COLS)
+    CoG_ROIs(filename_events,minAct,N_ROWS, N_COLS, fillColumnFlag)
 %[ROI, varargout] = CoG_ROIs(filename_events,minAct,N_ROWS, N_COLS)
 %calculates regions of interest based on the connected components 
 %of the center of gravity (CoG) sensors that exhibit at least minAct events
@@ -84,6 +84,13 @@ for i = 1:CC.NumObjects
                 '%*[(] %u %*[,] %u %*[)]');
             eventRows = colsRowsInterleaved(2:2:end);
             eventCols = colsRowsInterleaved(1:2:end);
+            if fillColumnFlag
+                %make use of MATLAB internal vector representation:
+                eventRows = [eventRows(:)';eventRows(:)'];
+                eventRows = eventRows(:)';
+                eventCols = [eventCols(:)';eventCols(:)'+1];
+                eventCols = eventCols(:)';
+            end
             eventSensors = sub2ind(CC.ImageSize,eventRows,eventCols);
             sensorsROI = union(sensorsROI,eventSensors);
         end

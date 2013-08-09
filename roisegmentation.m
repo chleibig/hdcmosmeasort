@@ -58,7 +58,7 @@ switch paramsRoi.method
         OL = [];
     case 'cog'
         [allRoi] = CoG_ROIs(metaData.filename_events,paramsRoi.minNoEvents,...
-            max(metaData.sensor_rows), max(metaData.sensor_cols));
+            max(metaData.sensor_rows), max(metaData.sensor_cols),0);
         %collect output
         for i = 1:allRoi.NumObjects
             %sensor row col pairs for each pixel in ROI_i:

@@ -16,6 +16,11 @@ for i=1:dims;
                                     5*median(abs(X(i,:))/0.6745),ceil(sr));
     amplitudes = -1*pos_amplitudes;
     if ~isempty(amplitudes)
+        %Get IC spike waveforms
+        %...
+        %Perform PCA on them
+        %...
+        
         KluRes = doKlustaKwik(amplitudes');
         class_score = zeros(max(KluRes.dataClass),1);
         for k = 1:max(KluRes.dataClass)
