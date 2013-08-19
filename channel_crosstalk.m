@@ -1,4 +1,4 @@
-function [SM] = channel_crosstalk(X, maxlags, SD, d_max)
+function [SM, Tau] = channel_crosstalk(X, maxlags, SD, d_max)
 %Estimate pairwise crosstalk between channels. Currently based
 %on correlation coefficient, but consider crosstalk metric used
 %by Mads Dyrholm
@@ -24,5 +24,5 @@ t2 = clock;
 fprintf('done in %g sec.\n',etime(t2,t1));
 
 SM = C_max;
-
+Tau = Tau_max;
 end
