@@ -46,7 +46,12 @@ for i=1:N_comp;
             %take the biggest local minimum, which is guaranted as cts is
             %ordered according to bin_ctrs:
             [pks,locs] = findpeaks(-cts);
-            thr_adap = bin_ctrs(locs(end));
+            if ~isempty(locs)
+                thr_adap = bin_ctrs(locs(end));
+            else
+                [val, ind] = min(cts);
+                thr_adap = bin_ctrs(ind);
+            end
             indices_adap = indices(amplitudes < thr_adap);
             if show
                 figure(fH);plot([thr_adap thr_adap], [0 max(cts)]);
