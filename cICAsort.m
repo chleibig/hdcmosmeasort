@@ -47,14 +47,14 @@ plotting =  1;
 interactive = 0;
 
 %Tissue specs:
-neuron_rho = 3000; %in mm⁻²
+neuron_rho = 2500; %in mm⁻²
 if interactive
     neuron_rho = input('Please specify the expected neuron density in mm⁻²: ');
 end
     
 %ROI segmentation:
 par.roi.method = 'tce';
-par.roi.minNoEvents = 3;
+par.roi.minNoEvents = 15;
 if d_sensor_col == 2 && d_sensor_row == 1
     par.roi.thr_factor = 10.95;
     par.roi.n_rows = 5;
@@ -82,7 +82,7 @@ par.ica.allchannels = false; %if true, all channels are used
 %par.ica.channels - boolean array of length M, indicating the channels
 %to be used (overwritten, if allchannels is true) gets assigned after
 %roi identification
-par.ica.nonlinearity = 'skew';
+par.ica.nonlinearity = 'pow3';
 par.ica.estimate = false;
 par.ica.cpn  = 1; %components per neuron for later use to calculate
 %par.ica.numOfIC (overwritten, if params.estimate is true)
@@ -90,6 +90,8 @@ par.ica.per_var = 1; %keep that many dimensions such that per_var of the
 %total variance gets explained
 par.ica.approach = 'symm';
 par.ica.verbose = 'off';
+par.ica.renorm = true; %if true renormalize W and S such that only noise
+                       %instead of all signal is of unit variance
 
 %convolutive ICA:
 if interactive
@@ -118,6 +120,8 @@ min_no_peaks = 5;
 maxlags = L;
 
 
+%mixture units:
+maxSD = 1.6;
 
 %duplicates:
 t_s = 0.5; %ms
@@ -188,6 +192,7 @@ for i = 1:length(ROIs)
         nnz(par.ica.channels));
 
     [S, A, W, par.ica] = fasticanode(X,par.ica);
+    
 
 
     %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
@@ -247,19 +252,41 @@ for i = 1:length(ROIs)
     % Spike time identification
     %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 
-    % t1 = clock;
-    % [units] = SpikeTimeIdentificationKlustaKwik(S_cica, sr,1);
-    % t2 = clock;
-    % fprintf('Spike time identification and clustering with KlustaKwik\n');
-    % fprintf('performed in %g seconds\n',etime(t2,t1));
-
-    fprintf('Spike time identification with Hartigans dip test\n');
+    fprintf('Spike time identification and clustering with KlustaKwik\n');
     t1 = clock;
-    [units] = SpikeTimeIdentificationHartigan(S, sr,sign_lev,plotting,interactive);
+    [units, SDscore] = SpikeTimeIdentificationKlustaKwik(S,0,10, sr, plotting);
     t2 = clock;
     fprintf('performed in %g seconds\n',etime(t2,t1));
+    
+%     fprintf('Spike time identification with Hartigans dip test\n');
+%     t1 = clock;
+%     [units] = SpikeTimeIdentificationHartigan(S, sr,sign_lev,plotting,1);
+%     t2 = clock;
+%     fprintf('performed in %g seconds\n',etime(t2,t1));
 
+    
+    %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+    % Remove mixed units
+    %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 
+    clear keep
+    
+    keep = (SDscore <= maxSD);
+    
+    if ~exist('A_mix','var'); A_mix = []; end
+    if ~exist('S_mix','var'); S_mix = []; end
+    
+    S_mix = [S_mix;S(~keep,:)];
+    A_mix = cat(2,A_mix,A_tau(:,~keep,:));
+    units_mix = units(~keep);
+    
+    S = S(keep,:);
+    A_tau = A_tau(:,keep,:);
+    units = units(keep);
+    
+    fprintf('Removed %g units supposed to contain mixtures.\n',nnz(~keep));
+    
+    clear keep
 
     %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
     % Collecting preliminary results
@@ -310,78 +337,83 @@ for i = 1:length(ROIs)
     end
 
 
-    %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-    % Choose finally accepted units
-    %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-    
-    %Just for visualization purposes:
-    if plotting
-        SpikeTimeIdentificationHartigan(S, sr,sign_lev,1,0);
-    end
+%     %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+%     % Choose finally accepted units
+%     %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+%     
+%     %Just for visualization purposes:
+%     if plotting
+%         SpikeTimeIdentificationHartigan(S, sr,sign_lev,1,0);
+%     end
+% 
+%     if interactive
+%         fprintf('Please examine found units.\n');
+%         keyboard;
+%         remove_IDs = input(...
+%          'Please specify all units to delete by their IDs in a vector:\n');
+%         
+%         remove = false(length(units),1);
+%         remove(remove_IDs) = true;
+%         
+%         S_noise = [S_noise;S(remove,:)];
+%         A_noise = cat(2,A_noise,units(remove).A_tau);
+%         S = S(~remove,:);
+%         units = units(~remove);
+%         A_tau = A_tau(:,~remove,:);
+%         clear remove
+%     end
 
-    if interactive
-        fprintf('Please examine found units.\n');
-        keyboard;
-        remove_IDs = input(...
-         'Please specify all units to delete by their IDs in a vector:\n');
-        
-        remove = false(length(units),1);
-        remove(remove_IDs) = true;
-        
-        S_noise = [S_noise;S(remove,:)];
-        A_noise = cat(2,A_noise,units(remove).A_tau);
-        S = S(~remove,:);
-        units = units(~remove);
-        A_tau = A_tau(:,~remove,:);
-        clear remove
-    end
+%     %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+%     % Collecting final results
+%     %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+% 
+%     if size(A_tau,2) ~= size(S,1)
+%         error('Something went wrong!');
+%     end
+% 
+%     %This time with interactive thresholding:
+%     if interactive
+%         sign_lev = input('Specify significance level for unimodality:');
+%     end
+%     
+%     [units] = SpikeTimeIdentificationHartigan(S, sr,sign_lev,plotting,interactive);
+% 
+%     data_tmp = reshape(X,...
+%         [length(sensor_rows_roi) length(sensor_cols_roi) size(X,2)]);
+%     for k = 1:length(units)
+%         units(k).A_tau = A_tau(:,k,:);
+%         %Consider to calculate STAs only based on "non-coincident" spikes!
+%         units(k).STA = GetSTA(data_tmp, units(k).time, sr, 0);
+%         [row_max,col_max] = find(max(abs(units(k).STA),[],3)...
+%             == max(max(max(abs(units(k).STA)))));
+%         units(k).boss_row = sensor_rows_roi(row_max);
+%         units(k).boss_col = sensor_cols_roi(col_max);
+%     end
+%     clear data_tmp
 
-    %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-    % Collecting final results
-    %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-
-    if size(A_tau,2) ~= size(S,1)
-        error('Something went wrong!');
-    end
-
-    %This time with interactive thresholding:
-    if interactive
-        sign_lev = input('Specify significance level for unimodality:');
-    end
-    
-    [units] = SpikeTimeIdentificationHartigan(S, sr,sign_lev,plotting,interactive);
-
-    data_tmp = reshape(X,...
-        [length(sensor_rows_roi) length(sensor_cols_roi) size(X,2)]);
-    for k = 1:length(units)
-        units(k).A_tau = A_tau(:,k,:);
-        %Consider to calculate STAs only based on "non-coincident" spikes!
-        units(k).STA = GetSTA(data_tmp, units(k).time, sr, 0);
-        [row_max,col_max] = find(max(abs(units(k).STA),[],3)...
-            == max(max(max(abs(units(k).STA)))));
-        units(k).boss_row = sensor_rows_roi(row_max);
-        units(k).boss_col = sensor_cols_roi(col_max);
-    end
-    clear data_tmp
-
-    if interactive
-        fprintf('Another chance to inspect final results before they are saved.\n');
-        keyboard;
-    end
+%     if interactive
+%         fprintf('Another chance to inspect final results before they are saved.\n');
+%         keyboard;
+%     end
     
     ROIs(i).A = A;
     ROIs(i).A_dupl = A_dupl;
     ROIs(i).A_noise = A_noise;
+    ROIs(i).A_mix = A_mix;
     ROIs(i).A_tau = A_tau;
     ROIs(i).S = S;
     ROIs(i).S_dupl = S_dupl;
     ROIs(i).S_noise = S_noise;
+    ROIs(i).S_mix = S_mix;
     ROIs(i).W = W;
     ROIs(i).duplicate_pairs = duplicate_pairs;
     ROIs(i).units = units;
     ROIs(i).units_dupl = units_dupl;
+    ROIs(i).units_mix = units_mix;
     
     clear A A_dupl A_noise A_tau S S_dupl S_noise W duplicate_pairs units units_dupl
+    
+    clear A_mix S_mix units_mix
     
     clear X sensor_rows_roi sensor_cols_roi T_mask N_mask
     
