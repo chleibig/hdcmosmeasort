@@ -20,6 +20,8 @@ function [S_ica, A, W, params] = fasticanode(X,params)
 %     params.per_var - keep that many dimensions such that per_var of the total 
               %variance gets explained
 %     params.approach - either "symm" or "defl"
+%     params.renorm - if true, renormalize W and S such that noise instead
+%     of signal is of variance 1 (ref. Jaeckel, 2012)
 %
 % Output
 % ======
@@ -30,6 +32,8 @@ function [S_ica, A, W, params] = fasticanode(X,params)
 % params - output because some parameters might be overwritten
 %
 % christian.leibig@g-node.org, 16.07.13
+
+noise_frames = ~params.frames;
 
 if params.allframes; params.frames = true(size(X,2),1); end
 
@@ -75,6 +79,17 @@ t1 = clock;
     'g',params.nonlinearity,'approach',params.approach,...
     'numOfIC',params.numOfIC,'pcaE', pcaE,...
     'pcaD', pcaD,'verbose',params.verbose);
+
+if params.renorm
+    %Normalize DCVs such that noise in S = W*X has unit variance
+    C_noise = X(params.channels,noise_frames)*...
+        X(params.channels,noise_frames)'/nnz(noise_frames);
+    W_renorm = W;
+    for k = 1:size(W,1)
+        W_renorm(k,:) = W(k,:)/sqrt(W(k,:)*C_noise*W(k,:)');
+    end
+    W = W_renorm;
+end
 %Compute the source activations over all samples T
 S_ica = W*X(params.channels,:);
 t2 = clock;
