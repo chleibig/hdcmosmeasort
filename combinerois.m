@@ -85,7 +85,6 @@ for i = 1:N_OL_PAIRS
             (sensor_rows <= sensor_rows_IJ(end)),...
             (sensor_cols_IJ(1) <= sensor_cols) & ...
             (sensor_cols <= sensor_cols_IJ(end)),:);
-        
         %Get duplicates.
         [duplicate_pairs, IiDupl, JiDupl] = checkforinterroiduplicates(...
             roisIn(I(i)).units, roisIn(J(i)).units, sr, dataIJ, ...
@@ -106,7 +105,7 @@ for i = 1:N_OL_PAIRS
             
             %A_dupl
             if ~isfield(roisIn(I(i)),'A_dupl')
-                roisIn(I(i)).A_dupl = [];
+                roisIn(I(i)).A_dupl = roisIn(I(i)).A_tau(:,remove,:);
             else
                 roisIn(I(i)).A_dupl = cat(2,roisIn(I(i)).A_dupl,roisIn(I(i)).A_tau(:,remove,:));
             end
@@ -138,7 +137,7 @@ for i = 1:N_OL_PAIRS
             
             %A_dupl
             if ~isfield(roisIn(J(i)),'A_dupl')
-                roisIn(J(i)).A_dupl = [];
+                roisIn(J(i)).A_dupl = roisIn(J(i)).A_tau(:,remove,:);
             else
                 roisIn(J(i)).A_dupl = cat(2,roisIn(J(i)).A_dupl,roisIn(J(i)).A_tau(:,remove,:));
             end
