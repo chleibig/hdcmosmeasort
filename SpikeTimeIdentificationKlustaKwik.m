@@ -79,17 +79,24 @@ for i=1:dims;
                 KluRes = doKlustaKwik(pcasig');
         end
         class_score = zeros(max(KluRes.dataClass),1);
-        for k = 1:max(KluRes.dataClass)
-            %consider different rating scheme
-            %class_score(k) = sum(x(indices(KluRes.dataClass==k)));
-            if nnz(KluRes.dataClass == k) <= 2
-                class_score(k) = 0;
-            else
+        amplitudes_std = zeros(max(KluRes.dataClass),1);
+        for k = 2:max(KluRes.dataClass) %k = 1 is a noise cluster
                 class_score(k) = norm(mean(pks(:,KluRes.dataClass == k),2));
-            end
+                amplitudes_std(k) = std(amplitudes(KluRes.dataClass == k)/noise_std);
         end
-        %[value_winner,k_winner] = min(class_score);
-        [value_winner,k_winner] = max(class_score);
+        [~, ind] = sort(class_score, 1, 'descend');
+        %merge potential outliers:
+        if ( amplitudes_std(ind(1)) <= 0.2 * noise_std ) || ...
+                ( amplitudes_std(ind(2)) <= 0.2 * noise_std )
+           %merge second largest unit with largest unit.
+           KluRes.dataClass(KluRes.dataClass == ind(2)) = ind(1);
+           %adopt k's.
+           KluRes.dataClass(KluRes.dataClass > ind(2)) = ...
+               KluRes.dataClass(KluRes.dataClass > ind(2)) - 1;
+           ind(1) = ind(1) - (ind(1) > ind(2));
+        end
+        k_winner = ind(1);
+        clear class_score amplitudes_std ind
         %SD test:
         residuals_std = std(pks(:,KluRes.dataClass==k_winner),0,2);
         %fullSDs(:,i) = residuals_std - noise_std;
