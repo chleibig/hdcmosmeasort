@@ -110,6 +110,14 @@ switch paramsRoi.method
                 subplot(pltsize,pltsize,i);
                 imagesc(reshape(ROIs(i).N_mask,...
                     [length(ROIs(i).sensor_rows) length(ROIs(i).sensor_cols)]));
+                %ensure that Ticks are integers and within range of sensors:
+                XTicks = get(gca,'XTick');
+                XTicks = unique([ceil(XTicks(1)) round(XTicks(2:end-1)) floor(XTicks(end))]);
+                set(gca,'XTick',XTicks);
+                YTicks = get(gca,'YTick');
+                YTicks = unique([ceil(YTicks(1)) round(YTicks(2:end-1)) floor(YTicks(end))]);
+                set(gca,'YTick',unique(ceil(get(gca,'YTick'))));
+                
                 set(gca,'XTickLabel',ROIs(i).sensor_cols(get(gca,'XTick')));
                 xlabel('sensor cols');
                 set(gca,'YTickLabel',ROIs(i).sensor_rows(get(gca,'YTick')));
