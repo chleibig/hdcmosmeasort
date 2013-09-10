@@ -82,14 +82,14 @@ else
 
     clear V_quad
     
+    tcs = (V_env > thr_factor^2);
+    V_env_pks = V_env(tcs);
     if plotting
-       figure;hist(sqrt(V_env(:)),floor(sqrt(length(V_env(:)))));
-       title('hist(|V_{env}|)');
+       figure;hist(sqrt(V_env_pks(:)),floor(sqrt(length(V_env(:)))));
+       title('hist(|V_{env}(tcs)|)');
        xlabel('V_{env}');
        ylabel('counts');
     end
-
-    tcs = (V_env > thr_factor^2);
 end
 
 t2 = clock;
