@@ -23,6 +23,8 @@ function [ROIs, OL] = roisegmentation(data, metaData, paramsRoi, show)
 %       *.minNoEvents - the minimum # of events on a CoG sensor to be valid
 %                       as a ROI seed
 %       *.horizon - see under 'tce'
+%       *.mergeThr - if overlap between ROIs is at least as big they get
+%                    merged
 %
 % show - flag to control graphical output
 %
@@ -58,7 +60,7 @@ switch paramsRoi.method
         OL = [];
     case 'cog'
         [allRoi] = CoG_ROIs(metaData.filename_events,paramsRoi.minNoEvents,...
-            max(metaData.sensor_rows), max(metaData.sensor_cols),0);
+            max(metaData.sensor_rows), max(metaData.sensor_cols),0,paramsRoi.mergeThr);
         %collect output
         for i = 1:allRoi.NumObjects
             %sensor row col pairs for each pixel in ROI_i:
@@ -125,6 +127,13 @@ switch paramsRoi.method
                 title(strcat(num2str(i),': ',num2str(length(ROIs(i).time)),' events'));
             end
             
+            
+            figure;
+            showrois(allRoi);
+            title('all ROIs');
+            xlabel('sensor columns');ylabel('sensor rows');
+            colorbar;
+            
             figure;
             imagesc(OL);
             title(strcat('fraction of shared sensors (',...
@@ -133,6 +142,8 @@ switch paramsRoi.method
             ylabel('ROI index');
             axis square;
             colorbar;
+            
+            
         end
         
         
