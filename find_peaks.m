@@ -1,4 +1,5 @@
 function [indices, peaks] = find_peaks(X,thr,L)
+% [indices, peaks] = find_peaks(X,thr,L)
 % Find local maxima in X (vector) that are 
 % above threshold thr and within L samples after
 % threshold crossing
