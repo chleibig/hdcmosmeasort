@@ -6,7 +6,6 @@ function [ ROIs ] = cICAsort(filename, filenameEvents)
 
 diary logfile_cICAsort.txt
 
-% dbstop in cICAsort.m at 192
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 % Load data
@@ -43,18 +42,19 @@ clear dataset
 
 
 %general:
-plotting =  1;
+plotting =  0;
 interactive = 0;
 
 %Tissue specs:
-neuron_rho = 2500; %in mm⁻²
+neuron_rho = 1300; %in mm⁻²
 if interactive
     neuron_rho = input('Please specify the expected neuron density in mm⁻²: ');
 end
     
 %ROI segmentation:
-par.roi.method = 'tce';
+par.roi.method = 'cog';
 par.roi.minNoEvents = 15;
+par.roi.mergeThr = 0.5;
 if d_sensor_col == 2 && d_sensor_row == 1
     par.roi.thr_factor = 10.95;
     par.roi.n_rows = 5;
@@ -99,14 +99,20 @@ if interactive
 else
    do_cICA = false;
 end
- 
-if (round(sr) <= 12) && (round(sr) >= 11)
-    L = 7; M = 0;
-elseif (round(sr) <= 24) && (round(sr) >= 23)
-    L = 8;M = 12;
+
+if do_cICA
+    
+    if (round(sr) <= 12) && (round(sr) >= 11)
+        L = 7; M = 0;
+    elseif (round(sr) <= 24) && (round(sr) >= 23)
+        L = 8;M = 12;
+    else
+        L = input('Please specify L: ');
+        M = input('Please specify M: ');
+    end
+    
 else
-    L = input('Please specify L: ');
-    M = input('Please specify M: ');    
+    L = 0;M = 0;
 end
 
 allframes_cica = 1;
@@ -116,18 +122,18 @@ min_corr = 0.1;
 grouping = 'cluster';
 max_cluster_size = 4;
 max_iter = 10;
-min_no_peaks = 5;
+min_no_peaks = 3;
 maxlags = L;
 
 
 %mixture units:
-maxSD = 1.6;
+maxRSTD = 0.5;
 
 %duplicates:
 t_s = 0.5; %ms
 t_jitter = 1; %ms
 coin_thr = 0.5; %fraction of coincident spikes
-sim_thr = 0.6; %similarity of average waveforms
+sim_thr = 0.8; %similarity of average waveforms
 
 sign_lev = 0.05; %for automatic threshold adaptation;
 
@@ -254,7 +260,7 @@ for i = 1:length(ROIs)
 
     fprintf('Spike time identification and clustering with KlustaKwik\n');
     t1 = clock;
-    [units, SDscore] = SpikeTimeIdentificationKlustaKwik(S,0,10, sr, plotting);
+    [units] = SpikeTimeIdentificationKlustaKwik(S,0,10, sr, plotting);
     t2 = clock;
     fprintf('performed in %g seconds\n',etime(t2,t1));
     
@@ -269,24 +275,30 @@ for i = 1:length(ROIs)
     % Remove mixed units
     %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 
-    clear keep
-    
-    keep = (SDscore <= maxSD);
-    
     if ~exist('A_mix','var'); A_mix = []; end
     if ~exist('S_mix','var'); S_mix = []; end
+    if ~exist('units_mix','var'); units_mix = []; end
     
-    S_mix = [S_mix;S(~keep,:)];
-    A_mix = cat(2,A_mix,A_tau(:,~keep,:));
-    units_mix = units(~keep);
-    
-    S = S(keep,:);
-    A_tau = A_tau(:,keep,:);
-    units = units(keep);
-    
-    fprintf('Removed %g units supposed to contain mixtures.\n',nnz(~keep));
-    
-    clear keep
+    if length(units) > 0
+
+        clear keep
+        keep = ([units.RSTD] <= maxRSTD);
+        %dbstop in cICAsort.m at 276 if (nnz(~keep) > 0)
+        
+
+        S_mix = [S_mix;S(~keep,:)];
+        A_mix = cat(2,A_mix,A_tau(:,~keep,:));
+        units_mix = units(~keep);
+
+        S = S(keep,:);
+        A_tau = A_tau(:,keep,:);
+        units = units(keep);
+
+        fprintf('Removed %g units supposed to contain mixtures.\n',nnz(~keep));
+
+        clear keep
+
+    end
 
     %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
     % Collecting preliminary results
@@ -319,6 +331,35 @@ for i = 1:length(ROIs)
     fprintf('found %g intraregional duplicates in %g seconds\n',...
         N_dupl,etime(t2,t1));
 
+    %dbstop in cICAsort.m at 326 if (N_dupl > 0)
+    %Experiment with additional criteria to decide upon which duplicate
+    %partner to remove:
+    for d = 1:N_dupl
+%         SpikeTimeIdentificationKlustaKwik(S(duplicate_pairs(d,:),:),0,10, sr, 1);
+%         if (units(duplicate_pairs(d,1)).RSTD > 1.5*units(duplicate_pairs(d,2)).RSTD)
+%             %duplicate_pairs(d,1) is considered to be a mixture and will be
+%             %removed
+%             break;
+%         end
+%         if (units(duplicate_pairs(d,2)).RSTD > 1.5*units(duplicate_pairs(d,1)).RSTD)
+%             %duplicate_pairs(d,1) is considered to be a mixture and will be
+%             %removed
+%             duplicate_pairs(d,:) = duplicate_pairs(d,end:-1:1);
+%             break;
+%         end
+        
+        %No mixture detected - the unit with higher separability will
+        %be kept
+        if units(duplicate_pairs(d,1)).separability <= units(duplicate_pairs(d,2)).separability
+            %remove the first
+        else
+            %remove the second
+            duplicate_pairs(d,:) = duplicate_pairs(d,end:-1:1);
+        end
+    end
+    
+    
+    
     if ~isempty(duplicate_pairs)
         remove = false(length(units),1);
         remove(duplicate_pairs(:,1)) = true;
