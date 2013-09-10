@@ -1,5 +1,5 @@
 function [ROI, varargout] = ...
-    CoG_ROIs(filename_events,minAct,N_ROWS, N_COLS, fillColumnFlag)
+    CoG_ROIs(filename_events,minAct,N_ROWS, N_COLS, fillColumnFlag, mergeThr)
 %[ROI, varargout] = CoG_ROIs(filename_events,minAct,N_ROWS, N_COLS)
 %calculates regions of interest based on the connected components 
 %of the center of gravity (CoG) sensors that exhibit at least minAct events
@@ -12,7 +12,9 @@ function [ROI, varargout] = ...
 % sensors
 % minAct: min activity in # of events, i.e. unitless
 % N_ROWS, N_COLS: array extension in sensor coordinates
-%
+% fillColumnFlag: if true, skipped sensor columns get filled
+% mergeThr: regions of interest with at least mergeThr overlap fraction get
+%           merged
 %
 % Output
 % ======
@@ -59,7 +61,11 @@ minNoEventExistence = (nEventsPerSensor >= minAct);
 
 
 %Connected components on CoG sensors
-CC = bwconncomp(minNoEventExistence);
+%CC = bwconncomp(minNoEventExistence);
+%Or skip connected components on CoG sensors:
+CC = struct('Connectivity',8,'ImageSize',[N_ROWS N_COLS],...
+    'NumObjects',nnz(minNoEventExistence),...
+    'PixelIdxList',{num2cell(find(minNoEventExistence)')});
 
 %For each connected component add all sensors that participate in the
 %events which are associated with the respective connected component
@@ -68,7 +74,7 @@ CC = bwconncomp(minNoEventExistence);
 %takes CC as it is output from BWCONNCOMP as input
 
 ROI = CC;
-tic;
+
 for i = 1:CC.NumObjects
     %Get CoG sensors of CC(i)
     sensorsROI = CC.PixelIdxList{i};
@@ -92,15 +98,47 @@ for i = 1:CC.NumObjects
                 eventCols = eventCols(:)';
             end
             eventSensors = sub2ind(CC.ImageSize,eventRows,eventCols);
-            sensorsROI = union(sensorsROI,eventSensors);
+            sensorsROI = [sensorsROI;eventSensors(:)];
         end
         ROI.time{i} = [ROI.time{i};time(events)];
         clear events
     end
-    ROI.PixelIdxList{i} = sensorsROI;
+    ROI.PixelIdxList{i} = unique(sensorsROI);
     
 end
 
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+% Merge regions of interest based on overlap fraction
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+
+[ OL ] = roioverlap( ROI.PixelIdxList );
+
+%adjacencyMatrix:
+A = OL >= mergeThr;
+
+clear OL
+
+%New ROIs are the connected components of that graph, take code from:
+%http://www.mathworks.com/matlabcentral/fileexchange/
+%42040-find-network-components
+oldROI = ROI;
+ROI.PixelIdxList = {};
+ROI.time = {};
+[ROI.NumObjects,sizes,members,unused] = networkComponents(A);
+
+%merge sensors and time stamps for merge cases.
+for i = 1:ROI.NumObjects
+    if sizes(i) == 1
+        ROI.PixelIdxList{i} = oldROI.PixelIdxList{members{i}};
+        ROI.time{i} = oldROI.time{members{i}};
+    else
+        ROI.PixelIdxList{i} = unique(vertcat(oldROI.PixelIdxList{members{i}}));
+        ROI.time{i} = unique(vertcat(oldROI.time{members{i}}));
+    end
+end
+    
+clear oldROI
 
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%

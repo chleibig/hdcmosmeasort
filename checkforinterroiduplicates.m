@@ -65,7 +65,7 @@ for n=1:N
     for m=1:M
         tn = nUnits(n).time;
         tm = mUnits(m).time;
-        [no_coin] = count_coincident_spks(tn,tm,sr,t_s,t_jitter);
+        [no_coin,unused1,unused2] = spiketrainalignment(tn,tm,sr,t_s,t_jitter);
         %choose normalization which maximizes coin_frac
         if length(tn) >= length(tm)
             coin_frac(n,m) = no_coin/length(tm);

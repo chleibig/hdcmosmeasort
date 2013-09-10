@@ -40,7 +40,8 @@ switch fileVersion
         data.sensorRows = dataset.Metadata.RowList;
         data.sensorCols = dataset.Metadata.ColumnList;
         data.sr = length(dataset.Metadata.FrameStartTimes)/...
-            dataset.Metadata.FrameStartTimes(end);%in kHz
+            (dataset.Metadata.FrameStartTimes(end) - ...
+            dataset.Metadata.FrameStartTimes(1));%in kHz
         data.frameStartTimes = dataset.Metadata.FrameStartTimes; %in ms
         chipType = h5attget(filename,'/Metadata','ChipType');
         chipType = chipType{1};

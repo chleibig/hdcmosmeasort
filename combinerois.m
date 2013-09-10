@@ -72,24 +72,82 @@ OL = triu(OL,1);
 
 N_OL_PAIRS = length(I);
 N_DUPL = 0;
+%---debugging---
+% dupl_RSTD = [];
+% dupl_amplSD = [];
+% dupl_SDscore = [];
+% dupl_sep = [];
+% dupl_S1 = [];
+% dupl_S2 = [];
+%---debugging---
+
 for i = 1:N_OL_PAIRS
-    
-    if ( (length(roisIn(I(i)).units) > 1) &&  (length(roisIn(J(i)).units) > 1) )
+    if ( (~isempty(roisIn(I(i)).units)) && (~isempty(roisIn(J(i)).units)) )
         %Select data region on which to calculate the STAs for the
         %duplicate check.
         sensor_rows_IJ = union(roisIn(I(i)).sensor_rows, roisIn(J(i)).sensor_rows);
         sensor_cols_IJ = union(roisIn(I(i)).sensor_cols, roisIn(J(i)).sensor_cols);
-                
+        
         dataIJ = data(...
             (sensor_rows_IJ(1) <= sensor_rows) & ...
             (sensor_rows <= sensor_rows_IJ(end)),...
             (sensor_cols_IJ(1) <= sensor_cols) & ...
             (sensor_cols <= sensor_cols_IJ(end)),:);
         %Get duplicates.
-        [duplicate_pairs, IiDupl, JiDupl] = checkforinterroiduplicates(...
+        [duplicate_pairs, unused, unused] = checkforinterroiduplicates(...
             roisIn(I(i)).units, roisIn(J(i)).units, sr, dataIJ, ...
             t_s, t_jitter, coin_thr, sim_thr, show, interactive);
-        N_DUPL = N_DUPL + length(duplicate_pairs);
+        N_DUPL = N_DUPL + size(duplicate_pairs,1);
+        
+        %Experiment with additional criteria to decide upon which duplicate
+        %partner to remove:
+        IiDupl = [];
+        JiDupl = [];
+        
+%         for d = 1:size(duplicate_pairs,1);
+%             if abs(skewness(roisIn(I(i)).S(duplicate_pairs(d,1),:))) < ...
+%                     abs(skewness(roisIn(J(i)).S(duplicate_pairs(d,2),:)))
+%                 IiDupl = [IiDupl; duplicate_pairs(d,1)];
+%             else
+%                 JiDupl = [JiDupl; duplicate_pairs(d,2)];
+%             end
+%         end
+        
+        for d = 1:size(duplicate_pairs,1)
+            %---debugging---
+            %SpikeTimeIdentificationKlustaKwik([roisIn(I(i)).S(duplicate_pairs(d,1),:);roisIn(J(i)).S(duplicate_pairs(d,2),:)],0,10, sr, 1);
+            
+%             dupl_RSTD = [dupl_RSTD; [roisIn(I(i)).units(duplicate_pairs(d,1)).RSTD roisIn(J(i)).units(duplicate_pairs(d,2)).RSTD]];
+%             dupl_amplSD = [dupl_amplSD; [roisIn(I(i)).units(duplicate_pairs(d,1)).amplitudeSD roisIn(J(i)).units(duplicate_pairs(d,2)).amplitudeSD]];
+%             dupl_SDscore = [dupl_SDscore; [roisIn(I(i)).units(duplicate_pairs(d,1)).SDscore roisIn(J(i)).units(duplicate_pairs(d,2)).SDscore]];
+%             dupl_sep = [dupl_sep; [roisIn(I(i)).units(duplicate_pairs(d,1)).separability roisIn(J(i)).units(duplicate_pairs(d,2)).separability]];
+%             dupl_S1 = [dupl_S1; roisIn(I(i)).S(duplicate_pairs(d,1),:)];
+%             dupl_S2 = [dupl_S2; roisIn(J(i)).S(duplicate_pairs(d,2),:)];
+            %---debugging---
+            
+%             if (roisIn(I(i)).units(duplicate_pairs(d,1)).RSTD > 1.5*roisIn(J(i)).units(duplicate_pairs(d,2)).RSTD)
+%                 IiDupl = [IiDupl; duplicate_pairs(d,1)];
+%                 break;
+%             end
+%             if (roisIn(J(i)).units(duplicate_pairs(d,2)).RSTD > 1.5*roisIn(I(i)).units(duplicate_pairs(d,1)).RSTD)
+%                 JiDupl = [JiDupl; duplicate_pairs(d,2)];
+%                 break;
+%             end
+            
+            %No mixture detected - the unit with higher separability will
+            %be kept
+            if roisIn(I(i)).units(duplicate_pairs(d,1)).separability <= roisIn(J(i)).units(duplicate_pairs(d,2)).separability
+                IiDupl = [IiDupl; duplicate_pairs(d,1)];
+            else
+                JiDupl = [JiDupl; duplicate_pairs(d,2)];
+            end
+            
+        end
+        
+        
+        
+        
+        
         %Remove duplicates in ROI I of pair i
         if ~isempty(IiDupl)
             remove = false(length(roisIn(I(i)).units),1);
@@ -117,8 +175,8 @@ for i = 1:N_OL_PAIRS
             else
                 roisIn(I(i)).units_dupl = ...
                     [roisIn(I(i)).units_dupl roisIn(I(i)).units(remove)];
-            end            
-            roisIn(I(i)).units = roisIn(I(i)).units(~remove);            
+            end
+            roisIn(I(i)).units = roisIn(I(i)).units(~remove);
             clear remove
         end
         
@@ -131,7 +189,7 @@ for i = 1:N_OL_PAIRS
             if ~isfield(roisIn(J(i)),'S_dupl')
                 roisIn(J(i)).S_dupl = roisIn(J(i)).S(remove,:);
             else
-                roisIn(J(i)).S_dupl = [roisIn(J(i)).S_dupl;roisIn(J(i)).S(remove,:)];                                
+                roisIn(J(i)).S_dupl = [roisIn(J(i)).S_dupl;roisIn(J(i)).S(remove,:)];
             end
             roisIn(J(i)).S = roisIn(J(i)).S(~remove,:);
             
@@ -149,15 +207,17 @@ for i = 1:N_OL_PAIRS
             else
                 roisIn(J(i)).units_dupl = ...
                     [roisIn(J(i)).units_dupl roisIn(J(i)).units(remove)];
-            end            
-            roisIn(J(i)).units = roisIn(J(i)).units(~remove);      
+            end
+            roisIn(J(i)).units = roisIn(J(i)).units(~remove);
             
             clear remove
         end
-
+        
     end
     
 end
+   
+%save('interroi_dupls.mat','dupl_S1','dupl_S2','dupl_sep');
 
 roisOut = roisIn;
 

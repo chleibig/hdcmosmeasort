@@ -49,7 +49,7 @@ for i=1:N
     for j=i+1:N
         ti = units(i).time;
         tj = units(j).time;
-        [n_coin] = count_coincident_spks(ti,tj,sr,t_s,t_jitter);
+        [n_coin,unused1,unused2] = spiketrainalignment(ti,tj,sr,t_s,t_jitter);
         coin_frac(i,j) = n_coin/length(ti);
         coin_frac(j,i) = n_coin/length(tj);
     end
