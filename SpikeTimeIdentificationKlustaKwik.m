@@ -1,5 +1,6 @@
-function [units, SDscore] = SpikeTimeIdentificationKlustaKwik(...
-                                    X,nEig,upsample, sr, show)
+function [units] = SpikeTimeIdentificationKlustaKwik(X,nEig,upsample, sr, show)
+% [units] = SpikeTimeIdentificationKlustaKwik(X,nEig,upsample, sr, show)
+% 
 % Perform spike time identification on each component
 % of X (dims x samples) and disambiguate the most prominent neuron
 % per component with KlustaKwik
@@ -37,13 +38,11 @@ function [units, SDscore] = SpikeTimeIdentificationKlustaKwik(...
 X(skewness(X') > 0,:) = -1 * X(skewness(X') > 0,:);
 
 if show;
-    fig1 = figure; fig2 = figure; fig3 = figure; 
+    fig1 = figure; fig2 = figure; %fig3 = figure; 
     splt_size = ceil(sqrt(dims));
 end
 units = struct('time',{},'amplitude',{});
-SDscore = zeros(1,dims);
-%lenRes = round(0.5 * sr*upsample) + round(0.5 * sr*upsample) + 1;
-%fullSDs = zeros(lenRes, dims);
+
 for i=1:dims;
     x = resample(X(i,:),upsample,1);
     N_SAMPLES = length(x);
@@ -78,40 +77,105 @@ for i=1:dims;
                 %Perform KlustaKwik on nEig most prominent pca scores.
                 KluRes = doKlustaKwik(pcasig');
         end
-        class_score = zeros(max(KluRes.dataClass),1);
-        amplitudes_std = zeros(max(KluRes.dataClass),1);
-        for k = 2:max(KluRes.dataClass) %k = 1 is a noise cluster
+        
+        
+        
+        
+        %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+        % Perform potentially a merging
+        %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+        
+        K = max(KluRes.dataClass);
+        kRange = unique(KluRes.dataClass);
+        N_CLU = length(kRange);
+        
+        clear k_winner k_nearest
+        
+        if N_CLU == 1
+            %there is only one cluster
+            k_winner = K;
+        end
+        if N_CLU > 1
+            class_score = zeros(K,1);
+            for k = kRange(1):kRange(end)
                 class_score(k) = norm(mean(pks(:,KluRes.dataClass == k),2));
-                amplitudes_std(k) = std(amplitudes(KluRes.dataClass == k)/noise_std);
+            end
+            [unused, ind] = sort(class_score, 1, 'descend');
+            clear class_score kRange
+            %merge potential outliers:
+            if  (nnz(KluRes.dataClass == ind(1)) == 1) || ...
+                ( ( (std(amplitudes(KluRes.dataClass == ind(1))) <= 0.2) || ...
+                    (std(amplitudes(KluRes.dataClass == ind(2))) <= 0.2) ) ...
+                && ( abs(mean(abs(amplitudes(KluRes.dataClass == ind(1)))) ...
+                    - mean(abs(amplitudes(KluRes.dataClass == ind(2))))) <= 2.5 )) 
+                
+                %merge second largest unit with largest unit.
+                tomerge = ind(2);
+                KluRes.dataClass(KluRes.dataClass == tomerge) = ind(1);
+                %adopt k's.
+                KluRes.dataClass(KluRes.dataClass > tomerge) = ...
+                    KluRes.dataClass(KluRes.dataClass > tomerge) - 1;
+                ind(2) = ind(1);
+                ind = ind - (ind > tomerge);
+                
+                k_winner = ind(1);
+                try
+                    k_nearest = ind(3);
+                catch
+                    N_CLU = 1;
+                end
+            else
+                k_winner = ind(1);
+                k_nearest = ind(2);
+            end
+            clear ind
         end
-        [~, ind] = sort(class_score, 1, 'descend');
-        %merge potential outliers:
-        if ( amplitudes_std(ind(1)) <= 0.2 * noise_std ) || ...
-                ( amplitudes_std(ind(2)) <= 0.2 * noise_std )
-           %merge second largest unit with largest unit.
-           KluRes.dataClass(KluRes.dataClass == ind(2)) = ind(1);
-           %adopt k's.
-           KluRes.dataClass(KluRes.dataClass > ind(2)) = ...
-               KluRes.dataClass(KluRes.dataClass > ind(2)) - 1;
-           ind(1) = ind(1) - (ind(1) > ind(2));
-        end
-        k_winner = ind(1);
-        clear class_score amplitudes_std ind
+        
+        %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+        % Fill units
+        %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+                
+        
         %SD test:
         residuals_std = std(pks(:,KluRes.dataClass==k_winner),0,2);
-        %fullSDs(:,i) = residuals_std - noise_std;
-        SDscore(i) = max(residuals_std)/noise_std;
+        units(i).SDscore = max(residuals_std);
+        units(i).amplitudeSD = std(amplitudes(KluRes.dataClass==k_winner));
+        meanAmpWinner = mean(abs(amplitudes(KluRes.dataClass == k_winner)));
+        units(i).RSTD = units(i).amplitudeSD/meanAmpWinner;
+        
+        if N_CLU > 1
+            units(i).separability = meanAmpWinner - ...
+                mean(abs(amplitudes(KluRes.dataClass == k_nearest)));
+        else
+            units(i).separability = meanAmpWinner; %corresponds to average
+            %signal to noise ratio (noise is assumed to have unit variance)
+        end
+        
+        units(i).time = indices(KluRes.dataClass == k_winner)/(sr*upsample);
+        units(i).amplitude = x(indices(KluRes.dataClass==k_winner));
+        
+        
+        
         if show
-            colors = hsv(max(KluRes.dataClass));
+            K = max(KluRes.dataClass);
+            kRange = unique(KluRes.dataClass);
+            N_CLU = length(kRange);
+            colors = hsv(K);
+            %colors = hsv(max(KluRes.dataClass));
             figure(fig1);
-            for k=1:max(KluRes.dataClass);
+%             for k=1:max(KluRes.dataClass);
+            for k=kRange(1):kRange(end);
                 if k == k_winner; marker = 'x';else marker = 'o';end
                 plot(indices(KluRes.dataClass==k),...
                     x(indices(KluRes.dataClass==k)),...
                     'Color',colors(k,:),'Marker',marker,'LineStyle','none');
             end
+            title(strcat('amplSD = ',num2str(units(i).amplitudeSD),'; RSTD = ',...
+             num2str(units(i).RSTD),'; sep. = ',num2str(units(i).separability)));
+            
             figure(fig2);subplot(splt_size,splt_size,i);hold on;
-            for k=1:max(KluRes.dataClass);
+            %for k=1:max(KluRes.dataClass);
+            for k=kRange(1):kRange(end);
                 if k == k_winner;
                     color = 'black';
                 else
@@ -119,19 +183,20 @@ for i=1:dims;
                 end
                 plot(pks(:,KluRes.dataClass==k),'Color',color);
             end
-            figure(fig3);subplot(splt_size,splt_size,i);hold on;
-            plot(residuals_std);
-            title(strcat('SDscore = ',num2str(SDscore(i)),...
-                '; dip = ',num2str(min(residuals_std)/noise_std)));
-            plot(1:f_tot,noise_std*ones(1,f_tot),'-.');
+%             
+%             figure(fig3);subplot(splt_size,splt_size,i);hold on;
+%             plot(residuals_std);
+%             title(strcat('SDscore = ',num2str(units(i).SDscore),...
+%                 '; dip = ',num2str(min(residuals_std)/noise_std)));
+%             plot(1:f_tot,noise_std*ones(1,f_tot),'-.');
         end
-        units(i).time = indices(KluRes.dataClass == k_winner)/(sr*upsample);
-        units(i).amplitude = x(indices(KluRes.dataClass==k_winner));
+        
     else
         units(i).time = [];
         units(i).amplitude = [];
         
     end
+    
 end
 
 
