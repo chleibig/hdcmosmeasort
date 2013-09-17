@@ -1,6 +1,6 @@
 function [duplicate_pairs] = checkforintraroiduplicates(units, sr, ...
                                            t_s, t_jitter, coin_thr,...
-                                           sim_thr, show, interactive)
+                                           sim_thr, show, interactive,varargin)
 %checkforintraroiduplicates tests units pairwisely whether they
 %are duplicates or not based on the following criteria:
 %
@@ -19,6 +19,8 @@ function [duplicate_pairs] = checkforintraroiduplicates(units, sr, ...
 %           t_s + t_jitter ms apart from each other 
 % coin_thr: minimum fraction of coincident spikes
 % sim_thr: minimum similarity of average waveforms (STA)
+%
+% varargin{1}: unitIDs - vector of unit indices
 % 
 % OUTPUT:
 %
@@ -37,6 +39,12 @@ function [duplicate_pairs] = checkforintraroiduplicates(units, sr, ...
 
    
 N = length(units);
+
+if ~isempty(varargin)
+    unitIDs = varargin{1};
+else
+    unitIDs = 1:N;
+end
 
 %first compute all the N(N - 1)/2 pairwise criteria:
 
@@ -94,14 +102,25 @@ if show
    xlabel('unit index');
    ylabel('unit index');
    axis square;
+   set(gca,'XTick',1:N);
+   set(gca,'XTickLabel',unitIDs);
+   set(gca,'YTick',1:N);
+   set(gca,'YTickLabel',unitIDs);
+   
    subplot(2,2,3);hist(coin_frac(:));
    xlabel('fraction of coincident spikes');
    ylabel('counts');
+
    subplot(2,2,2);imagesc(sim);colorbar;
    title('similarities of STAs');
    xlabel('unit index');
    ylabel('unit index');
    axis square;
+   set(gca,'XTick',1:N);
+   set(gca,'XTickLabel',unitIDs);
+   set(gca,'YTick',1:N);
+   set(gca,'YTickLabel',unitIDs);
+
    subplot(2,2,4);hist(sim(:));
    xlabel('c_{ij}');
    ylabel('counts');
@@ -168,5 +187,7 @@ while continue_to_check
     
     end    
 end
+
+duplicate_pairs = unitIDs(duplicate_pairs);
 
 end
