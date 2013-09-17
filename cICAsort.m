@@ -121,15 +121,20 @@ else
 end
 
 params.allframes_cica = 1;
-params.min_skewness = 0.2;
+
 params.d_max = 1000; %maximal distance in \mum for extrema of filters
 params.min_corr = 0.1;
 params.grouping = 'cluster';
 params.max_cluster_size = 4;
 params.max_iter = 10;
-params.min_no_peaks = 3;
 params.maxlags = params.L;
 
+%Noise components.
+params.min_no_peaks = 3;
+params.min_skewness = 0.2;
+
+%Peak identification.
+params.thrFactor = 5;
 
 %mixture units:
 params.maxRSTD = 0.5;
@@ -184,7 +189,7 @@ metaData.filename_events = filenameEvents;
 nrOfROIs = length(ROIs);
 
 if nrOfROIs >= feature('numCores')
-    N_SESSIONS = round(0.8*feature('numCores')-1);%-1 due to master process
+    N_SESSIONS = round(0.5*feature('numCores')-1);%-1 due to master process
 else
     N_SESSIONS = nrOfROIs - 1;%-1 due to master process
 end

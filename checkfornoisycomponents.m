@@ -1,4 +1,4 @@
-function [keep] = checkfornoisycomponents(X,minSkew,minNoPeaks,sr,show)
+function [keep] = checkfornoisycomponents(X,minSkew, thrFactor, minNoPeaks,sr,show)
 %checkfornoisycomponents tests row vectors of X for
 %both a minimum skewness and minimum number of (negative) peaks
 %
@@ -7,6 +7,7 @@ function [keep] = checkfornoisycomponents(X,minSkew,minNoPeaks,sr,show)
 %
 % X - (N_COMPONENTS x N_SAMPLES) array
 % minSkew - minimum skewness for components to be kept
+% thrFactor - multiple of noise std , used for peak threshold
 % minNoPeaks - minimum number of peaks for components to be kept
 % sr - sampling rate in kHz
 % show - if true, plots are shown
@@ -30,7 +31,7 @@ n_peaks = zeros(1,size(X,1));
 
 for i = 1:size(X,1)
     [indices, peaks] = find_peaks(-X(i,:),...
-        5*median(abs(X(i,:))/0.6745),ceil(sr));
+        thrFactor*median(abs(X(i,:))/0.6745),ceil(sr));
     n_peaks(i) = length(peaks);
 end
 

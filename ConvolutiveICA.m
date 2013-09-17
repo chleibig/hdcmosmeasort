@@ -26,6 +26,7 @@ min_no_peaks = 2;
 t_s = 0.5;
 t_jitter = 1;
 coin_thr = 0.5;
+thrFactor = 5;
 
 do_cICA
 
@@ -63,6 +64,8 @@ else
             max_iter = (varargin{i+1});
         case 'sr'
             sr = (varargin{i+1});
+        case 'thrFactor'
+            thrFactor = (varargin{i+1});
         case 'min_no_peaks'
             min_no_peaks = (varargin{i+1});
         case 't_s'
@@ -103,7 +106,7 @@ while iteration_no < max_iter
     
     % 1. get indices of components to keep
     
-    [keep] = checkfornoisycomponents(X,min_skewness,min_no_peaks,sr,plotting);
+    [keep] = checkfornoisycomponents(X,min_skewness,thrFactor, min_no_peaks,sr,plotting);
 
     % 2. remove components and store them away:
     S_noise = [S_noise;X(~keep,:)];

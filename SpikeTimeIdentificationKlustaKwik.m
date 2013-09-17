@@ -1,5 +1,6 @@
-function [units] = SpikeTimeIdentificationKlustaKwik(X,nEig,upsample, sr, show)
-% [units] = SpikeTimeIdentificationKlustaKwik(X,nEig,upsample, sr, show)
+function [units] = SpikeTimeIdentificationKlustaKwik(X,nEig,upsample, sr,...
+                                                     thrFactor, show)
+% [units] = SpikeTimeIdentificationKlustaKwik(X,nEig,upsample,sr,thrFactor,show)
 % 
 % Perform spike time identification on each component
 % of X (dims x samples) and disambiguate the most prominent neuron
@@ -18,6 +19,8 @@ function [units] = SpikeTimeIdentificationKlustaKwik(X,nEig,upsample, sr, show)
 %            (before threshold detection)
 %
 % sr - sampling rate of X in kHz
+%
+% thrFactor - multiple of noise std to be used as peak threshold
 %
 % show - flag to control graphical output
 %
@@ -48,7 +51,7 @@ for i=1:dims;
     N_SAMPLES = length(x);
     if(show);figure(fig1);subplot(splt_size,splt_size,i);plot(x);hold on;end
     noise_std = median(abs(x)/0.6745);
-    [indices,pos_amplitudes] = find_peaks(-x,5*noise_std,ceil(sr*upsample));
+    [indices,pos_amplitudes] = find_peaks(-x,thrFactor*noise_std,ceil(sr*upsample));
     amplitudes = -1*pos_amplitudes;
     if ~isempty(amplitudes)
         %Get waveforms.

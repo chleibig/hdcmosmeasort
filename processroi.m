@@ -28,9 +28,9 @@ T_mask = ROI.T_mask;
 N_mask = ROI.N_mask;
 
 
-%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 % Preprocessing with fastICA
-%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 
 params.ica.frames = T_mask;
 params.ica.channels = N_mask;
@@ -42,9 +42,9 @@ params.ica.numOfIC = ceil(params.ica.cpn/(params.sensor_rho/params.neuron_rho) *
 
 
 
-%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 % Convolutive ICA
-%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 
 if params.do_cICA
     %Initialize lagged filters:
@@ -65,7 +65,8 @@ if params.do_cICA
         frames_ROI_cica,params.do_cICA,'M',params.M,'maxlags',params.maxlags,...
         'plotting',params.plotting,'min_skewness',params.min_skewness,'min_corr',params.min_corr,...
         'approach',params.grouping,'max_cluster_size',params.max_cluster_size,...
-        'max_iter',params.max_iter,'min_no_peaks',params.min_no_peaks,...
+        'max_iter',params.max_iter,'thrFactor',params.thrFactor,...
+        'min_no_peaks',params.min_no_peaks,...
         't_s',params.t_s,'t_jitter',params.t_jitter, 'coin_thr',params.coin_thr);
     t2 = clock;
     fprintf('convolutive ICA step performed in %g seconds\n',etime(t2,t1));
@@ -73,9 +74,9 @@ else
     fprintf('Convolutive ICA is not applied!\n');
 end
 
-%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 % Check for noisy components
-%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 
 %if convolutive ICA was not applied, we need to initialize some variables:
 if ~exist('A_noise','var'); A_noise = []; end
@@ -86,7 +87,8 @@ if ~exist('A_tau','var')
     A_tau(:,:,2:params.L+1) = 0;
 end
 
-[keep] = checkfornoisycomponents(S,params.min_skewness,params.min_no_peaks,params.sr,params.plotting);
+[keep] = checkfornoisycomponents(S,params.min_skewness,params.thrFactor,...
+                            params.min_no_peaks,params.sr,params.plotting);
 
 % store noisy stuff away and remove it from components and filters:
 S_noise = [S_noise;S(~keep,:)];
@@ -95,13 +97,13 @@ S = S(keep,:);
 A_tau = A_tau(:,keep,:);
 
 
-%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 % Spike time identification
-%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 
 fprintf('Spike time identification and clustering with KlustaKwik\n');
 t1 = clock;
-[units] = SpikeTimeIdentificationKlustaKwik(S,0,10, params.sr, params.plotting);
+[units] = SpikeTimeIdentificationKlustaKwik(S,0,10, params.sr,params.thrFactor,params.plotting);
 t2 = clock;
 fprintf('performed in %g seconds\n',etime(t2,t1));
 
@@ -112,9 +114,9 @@ fprintf('performed in %g seconds\n',etime(t2,t1));
 %     fprintf('performed in %g seconds\n',etime(t2,t1));
 
 
-%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 % Remove mixed units
-%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 
 if ~exist('A_mix','var'); A_mix = []; end
 if ~exist('S_mix','var'); S_mix = []; end
@@ -141,9 +143,9 @@ if length(units) > 0
 
 end
 
-%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 % Collecting preliminary results
-%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 
 data_tmp = reshape(X,...
     [length(sensor_rows_roi) length(sensor_cols_roi) size(X,2)]);
@@ -159,9 +161,9 @@ end
 clear data_tmp
 
 
-%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 % Remove duplicates
-%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 
 t1 = clock;
 fprintf('Checking for duplicates...\n');
