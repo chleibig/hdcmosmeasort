@@ -19,7 +19,7 @@ function [ SD ] = SpatialDistance(A_tau, d_row, d_col, N_row, N_col)
 
 K = size(A_tau,2);
 
-%Get extrema positions for all components:
+%Get extrema positions for all components in data coordinates:
 [row_ind, col_ind] = GetFilterExtrema(A_tau,1:N_row,1:N_col,0);
 
 %Compute distance matrix:

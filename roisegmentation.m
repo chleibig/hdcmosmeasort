@@ -1,4 +1,4 @@
-function [ROIs, OL] = roisegmentation(data, metaData, paramsRoi, show)
+function [ROIs, OL, ROIsAsCC] = roisegmentation(data, metaData, paramsRoi, show)
 %roisegmentation segments data into regions of interest
 %
 % Input
@@ -58,14 +58,16 @@ switch paramsRoi.method
             ROIIdentification(data, metaData.sensor_rows,...
             metaData.sensor_cols,paramsRoi, show);
         OL = [];
+        ROIsAsCC = [];
     case 'cog'
-        [allRoi] = CoG_ROIs(metaData.filename_events,paramsRoi.minNoEvents,...
+        [ROIsAsCC] = CoG_ROIs(metaData.filename_events,paramsRoi.minNoEvents,...
             max(metaData.sensor_rows), max(metaData.sensor_cols),0,paramsRoi.mergeThr);
         %collect output
-        for i = 1:allRoi.NumObjects
+        T_mask_global = false(length(metaData.frameStartTimes),1);
+        for i = 1:ROIsAsCC.NumObjects
             %sensor row col pairs for each pixel in ROI_i:
             [sensor_rows_pxl_i,sensor_cols_pxl_i] = ...
-                ind2sub(allRoi.ImageSize,allRoi.PixelIdxList{i});
+                ind2sub(ROIsAsCC.ImageSize,ROIsAsCC.PixelIdxList{i});
             ROIs(i).sensor_rows = unique(sensor_rows_pxl_i);
             ROIs(i).sensor_cols = unique(sensor_cols_pxl_i);
             data_ROI_i = data(...
@@ -88,17 +90,24 @@ switch paramsRoi.method
                 false(length(ROIs(i).sensor_rows)*length(ROIs(i).sensor_cols),1);
             ROIs(i).N_mask(lin_data_idx_pxl_i) = true;
             %*.T_mask
-            ROIs(i).time = allRoi.time{i};
+            ROIs(i).time = ROIsAsCC.time{i};
             % it would be easy to convert time into frame indices, however,
             % it could be that time obtained from CoG_ROIs has a different
             % offset than the time used by the caller, hence check for that
             [ frameIdx ] = time2frame(ROIs(i).time,metaData.frameStartTimes);
             ROIs(i).T_mask = false(length(metaData.frameStartTimes),1);
             ROIs(i).T_mask(frameIdx) = true;
-            ROIs(i).T_mask = fillvector( ROIs(i).T_mask, paramsRoi.horizon);
+            T_mask_global = ROIs(i).T_mask | T_mask_global;
         end
+        T_mask_global = fillvector( T_mask_global, paramsRoi.horizon);
+        %Assign each ROI the same global temporal mask. Far away regions 
+        %actually are not interesting, but effectively we just take somewhat 
+        %more samples into account which should not decrease the sorting quality
+        [ROIs.T_mask] = deal(T_mask_global);
+        clear T_mask_global
+            
         %overlap between rois:
-        [ OL ] = roioverlap( allRoi.PixelIdxList );
+        [ OL ] = roioverlap( ROIsAsCC.PixelIdxList );
         if show
             figure;colormap('gray');
             set(gcf,'position',get(0,'ScreenSize'));
@@ -106,9 +115,9 @@ switch paramsRoi.method
             text(0.5, 0.99, 'Regions of interest', 'Parent', BackgroundAxes , ...
                 'HorizontalAlignment','center', ...
                 'VerticalAlignment','top');
-            pltsize = ceil(sqrt(allRoi.NumObjects));
-            set(gca,'Xtick',1:allRoi.NumObjects, 'Ytick',1:allRoi.NumObjects);
-            for i = 1:allRoi.NumObjects
+            pltsize = ceil(sqrt(ROIsAsCC.NumObjects));
+            set(gca,'Xtick',1:ROIsAsCC.NumObjects, 'Ytick',1:ROIsAsCC.NumObjects);
+            for i = 1:ROIsAsCC.NumObjects
                 subplot(pltsize,pltsize,i);
                 imagesc(reshape(ROIs(i).N_mask,...
                     [length(ROIs(i).sensor_rows) length(ROIs(i).sensor_cols)]));
@@ -129,7 +138,7 @@ switch paramsRoi.method
             
             
             figure;
-            showrois(allRoi);
+            showrois(ROIsAsCC);
             title('all ROIs');
             xlabel('sensor columns');ylabel('sensor rows');
             colorbar;

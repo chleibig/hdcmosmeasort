@@ -103,7 +103,7 @@ A_tau = A_tau(:,keep,:);
 
 fprintf('Spike time identification and clustering with KlustaKwik\n');
 t1 = clock;
-[units] = SpikeTimeIdentificationKlustaKwik(S,0,10, params.sr,params.thrFactor,params.plotting);
+[units] = SpikeTimeIdentificationKlustaKwik(S,0,params.upsample, params.sr,params.thrFactor,params.plotting);
 t2 = clock;
 fprintf('performed in %g seconds\n',etime(t2,t1));
 
@@ -165,19 +165,19 @@ clear data_tmp
 % Remove duplicates
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 
-t1 = clock;
-fprintf('Checking for duplicates...\n');
-[duplicate_pairs] = checkforintraroiduplicates(units, params.sr, ...
-    params.t_s, params.t_jitter, params.coin_thr, params.sim_thr, params.plotting, params.interactive);
-N_dupl = size(duplicate_pairs,1);
-t2 = clock;
-fprintf('found %g intraregional duplicates in %g seconds\n',...
-    N_dupl,etime(t2,t1));
+% t1 = clock;
+% fprintf('Checking for duplicates...\n');
+% [duplicate_pairs] = checkforintraroiduplicates(units, params.sr, ...
+%     params.t_s, params.t_jitter, params.coin_thr, params.sim_thr, params.plotting, params.interactive);
+% N_dupl = size(duplicate_pairs,1);
+% t2 = clock;
+% fprintf('found %g intraregional duplicates in %g seconds\n',...
+%     N_dupl,etime(t2,t1));
 
 %dbstop in cICAsort.m at 326 if (N_dupl > 0)
 %Experiment with additional criteria to decide upon which duplicate
 %partner to remove:
-for d = 1:N_dupl
+% for d = 1:N_dupl
     %         SpikeTimeIdentificationKlustaKwik(S(duplicate_pairs(d,:),:),0,10, sr, 1);
     %         if (units(duplicate_pairs(d,1)).RSTD > 1.5*units(duplicate_pairs(d,2)).RSTD)
     %             %duplicate_pairs(d,1) is considered to be a mixture and will be
@@ -193,32 +193,33 @@ for d = 1:N_dupl
 
     %No mixture detected - the unit with higher separability will
     %be kept
-    if units(duplicate_pairs(d,1)).separability <= units(duplicate_pairs(d,2)).separability
-        %remove the first
-    else
-        %remove the second
-        duplicate_pairs(d,:) = duplicate_pairs(d,end:-1:1);
-    end
-end
+%     if units(duplicate_pairs(d,1)).separability <= units(duplicate_pairs(d,2)).separability
+%         %remove the first
+%     else
+%         %remove the second
+%         duplicate_pairs(d,:) = duplicate_pairs(d,end:-1:1);
+%     end
+% end
 
 
 
-if ~isempty(duplicate_pairs)
-    remove = false(length(units),1);
-    remove(duplicate_pairs(:,1)) = true;
-    units_dupl = units(remove);
-    S_dupl = S(remove,:);
-    A_dupl = [];
-    A_dupl = cat(2,A_dupl,units(remove).A_tau);
-    units = units(~remove);
-    S = S(~remove,:);
-    A_tau = A_tau(:,~remove,:);
-    clear remove
-else
+% if ~isempty(duplicate_pairs)
+%     remove = false(length(units),1);
+%     remove(duplicate_pairs(:,1)) = true;
+%     units_dupl = units(remove);
+%     S_dupl = S(remove,:);
+%     A_dupl = [];
+%     A_dupl = cat(2,A_dupl,units(remove).A_tau);
+%     units = units(~remove);
+%     S = S(~remove,:);
+%     A_tau = A_tau(:,~remove,:);
+%     clear remove
+% else
     units_dupl = [];
     S_dupl = [];
     A_dupl = [];
-end
+    duplicate_pairs = [];
+% end
 
 ROI.A = A;
 ROI.A_dupl = A_dupl;

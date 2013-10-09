@@ -1,6 +1,7 @@
 function [ROI, varargout] = ...
     CoG_ROIs(filename_events,minAct,N_ROWS, N_COLS, fillColumnFlag, mergeThr)
-%[ROI, varargout] = CoG_ROIs(filename_events,minAct,N_ROWS, N_COLS)
+%[ROI, varargout] = CoG_ROIs(filename_events,minAct,N_ROWS, N_COLS,
+%fillColumnFlag, mergeThr)
 %calculates regions of interest based on the connected components 
 %of the center of gravity (CoG) sensors that exhibit at least minAct events
 %over the entire recording

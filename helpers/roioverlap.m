@@ -1,4 +1,5 @@
 function [ OL ] = roioverlap( pixelIdxList )
+%[ OL ] = roioverlap( pixelIdxList )
 %roioverlap calculates the overlap between regions of interest
 %Normalization is with respect to number of participating sensors of smaller
 %region of interest.

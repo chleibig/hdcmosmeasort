@@ -1,4 +1,5 @@
-function [ ROIs, params ] = cICAsort(filename, filenameEvents)
+function [ ROIs, params, ROIsAsCC, data ] = cICAsort(filename, filenameEvents)
+%[ ROIs, params, ROIsAsCC ] = cICAsort(filename, filenameEvents)
 %cICAsort perform spike sorting of high density array data
 %based on (convolutive) ICA
 
@@ -19,6 +20,7 @@ params = struct();
 % Data and array specs
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 
+params.filename = filename;
 params.sensor_rows = dataset.sensorRows;
 params.sensor_cols = dataset.sensorCols;
 params.sr = dataset.sr;
@@ -50,15 +52,16 @@ params.plotting =  0;
 params.interactive = 0;
 
 %Tissue specs:
-params.neuron_rho = 1000; %in mm⁻²
+params.neuron_rho = 1141; %in mm�?�²
 if params.interactive
     params.neuron_rho = input(['Please specify the expected neuron '...
-                               ' density in mm⁻²: ']);
+                               ' density in mm�?�²: ']);
 end
     
 %ROI segmentation:
 params.roi.method = 'cog';
-params.roi.minNoEvents = 15;
+params.roi.minNoEvents = 1 * ... %multiplying factor in Spikes / second
+    (params.frameStartTimes(end) - params.frameStartTimes(1))/1000;
 params.roi.mergeThr = 0.5;
 if d_sensor_col == 2 && d_sensor_row == 1
     params.roi.thr_factor = 10.95;
@@ -74,7 +77,7 @@ else
     error(strcat('Unknown readout configuration.\n',...
     'Please check parameters for ROI identification'));
 end
-params.roi.horizon = floor(params.sr);%~1 ms to the left and to the right
+params.roi.horizon = 2*floor(params.sr);%~1 ms to the left and to the right
 %of detected activity is taken for the temporal ROI
 
 %fastICA parameters:
@@ -122,7 +125,7 @@ end
 
 params.allframes_cica = 1;
 
-params.d_max = 1000; %maximal distance in \mum for extrema of filters
+params.d_max = 50; %maximal distance in \mum for extrema of filters
 params.min_corr = 0.1;
 params.grouping = 'cluster';
 params.max_cluster_size = 4;
@@ -130,11 +133,14 @@ params.max_iter = 10;
 params.maxlags = params.L;
 
 %Noise components.
-params.min_no_peaks = 3;
-params.min_skewness = 0.2;
+params.min_no_peaks = 1 * ... %multiplying factor in Spikes / second
+    (params.frameStartTimes(end) - params.frameStartTimes(1))/1000;
+params.min_skewness = 0.05;
 
 %Peak identification.
 params.thrFactor = 5;
+%Upsampling factor used for spike time identification
+params.upsample = 10;
 
 %mixture units:
 params.maxRSTD = 0.5;
@@ -179,7 +185,12 @@ metaData.sr = params.sr;
 metaData.frameStartTimes = params.frameStartTimes;
 metaData.filename_events = filenameEvents;
 
-[ROIs, OL] = roisegmentation(data, metaData, params.roi, params.plotting);
+fprintf('\nConstructing regions of interest...\n');
+t1 = clock;
+[ROIs, OL, ROIsAsCC] = roisegmentation(data, metaData, params.roi, params.plotting);
+t2 = clock;
+fprintf('...prepared %g ROIs in %g seconds\n',length(ROIs),etime(t2,t1));
+
 
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
@@ -189,7 +200,7 @@ metaData.filename_events = filenameEvents;
 nrOfROIs = length(ROIs);
 
 if nrOfROIs >= feature('numCores')
-    N_SESSIONS = round(0.5*feature('numCores')-1);%-1 due to master process
+    N_SESSIONS = ceil(0.7*feature('numCores')-1);%-1 due to master process
 else
     N_SESSIONS = nrOfROIs - 1;%-1 due to master process
 end
@@ -202,7 +213,7 @@ if N_SESSIONS > 0
 
     settings.multicoreDir = multicoreDir;
     settings.nrOfEvalsAtOnce = 1;%floor(nrOfROIs/N_SESSIONS); % default: 4
-    settings.maxEvalTimeSingle = 500;
+    settings.maxEvalTimeSingle = 2500;
     settings.masterIsWorker = true;
     settings.useWaitbar = true;
 
@@ -222,8 +233,8 @@ if N_SESSIONS > 0
     ROIs = cell2mat(startmulticoremaster(@processroi,parameterCell,settings));
     %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
     t2 = clock;
-    fprintf(strcat('Parallel processing of %g different regions ',...
-       'of interest performed in %g seconds\n'),nrOfROIs,etime(t2,t1));
+    fprintf(['Parallel processing of %g different regions ',...
+       'of interest performed in %g seconds\n'],nrOfROIs,etime(t2,t1));
     %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
     stopmatlabsessions(multicoreDir);
     
@@ -231,11 +242,17 @@ else
     %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
     % Actual work is done here
     %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-    fprintf('\nNo need to parallelize, processing %g ROIs...\n',nrOfROIs);
+    fprintf('\nSerially processing %g ROIs...\n',nrOfROIs);
     t1 = clock;
-    ROIs(1).k = 1;
+    
     %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-    [ ROIs ] = processroi( ROIs, params );
+    tmpROIs = cell(1, nrOfROIs);
+    for i = 1:nrOfROIs
+        ROIs(i).k = i;
+        [ tmpROIs{i} ] = processroi( ROIs(i), params );
+    end
+    ROIs = cell2mat(tmpROIs);
+    clear tmpROIs
     %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
     t2 = clock;
     fprintf('done in %g seconds\n',etime(t2,t1));   
@@ -248,22 +265,24 @@ end
 % Combine results of different ROIs
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 
-if length(ROIs) > 1
-    fprintf('\nCombining results of different regions of interest...\n');
-    t1 = clock;
-    [ROIs, N_INTER_ROI_DUPL] = combinerois(ROIs, OL, params.sr, data,...
-        params.sensor_rows, params.sensor_cols, params.t_s, params.t_jitter,...
-        params.coin_thr, params.sim_thr, params.plotting, params.interactive);
-    t2 = clock;    
-    fprintf('found %g interregional duplicates in %g seconds\n',...
-        N_INTER_ROI_DUPL,etime(t2,t1));
-end
+% if length(ROIs) > 1
+%     fprintf('\nCombining results of different regions of interest...\n');
+%     t1 = clock;
+%     [ROIs, N_INTER_ROI_DUPL] = combinerois(ROIs, OL, params.sr, data,...
+%         params.sensor_rows, params.sensor_cols, params.t_s, params.t_jitter,...
+%         params.coin_thr, params.sim_thr, params.plotting, params.interactive);
+%     t2 = clock;    
+%     fprintf('found %g interregional duplicates in %g seconds\n',...
+%         N_INTER_ROI_DUPL,etime(t2,t1));
+% end
+
+
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 % Save results
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 
-SaveResults(filename, ROIs);   
+%SaveResults(ROIs, params);   
     
 t_total_2 = clock;
 fprintf('Total cICAsort performed in %g seconds\n',etime(t_total_2,t_total_1));
