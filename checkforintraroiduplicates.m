@@ -1,8 +1,11 @@
 function [duplicate_pairs] = checkforintraroiduplicates(units, sr, ...
                                            t_s, t_jitter, coin_thr,...
                                            sim_thr, show, interactive,varargin)
-%checkforintraroiduplicates tests units pairwisely whether they
-%are duplicates or not based on the following criteria:
+%[duplicate_pairs] = checkforintraroiduplicates(units, sr, ...
+%                                 t_s, t_jitter, coin_thr,...
+%                                 sim_thr, show, interactive,varargin)
+%tests units pairwisely whether they are duplicates or not based on the 
+%following criteria:
 %
 % 1. They have more than coin_thr spikes in common
 %
@@ -36,15 +39,38 @@ function [duplicate_pairs] = checkforintraroiduplicates(units, sr, ...
 %           we do not find any more duplicate
 %
 
-
    
 N = length(units);
 
-if ~isempty(varargin)
-    unitIDs = varargin{1};
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+% Default arguments
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+
+unitIDs = 1:N;
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+% Optional arguments
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+if (rem(length(varargin),2)==1)
+  error('Optional parameters should always go by pairs');
 else
-    unitIDs = 1:N;
+  for i=1:2:(length(varargin)-1)
+    if ~ischar (varargin{i}),
+      error (['Unknown type of optional parameter name (parameter' ...
+	      ' names must be strings).']);
+    end
+    % change the value of parameter
+    switch varargin{i}
+        case 'unitIDs'
+            unitIDs = (varargin{i+1});
+        otherwise
+            % Hmmm, something wrong with the parameter string
+            error(['Unrecognized parameter: ''' varargin{i} '''']);
+    end;
+  end;
 end
+
+
 
 %first compute all the N(N - 1)/2 pairwise criteria:
 
@@ -149,11 +175,12 @@ while continue_to_check
     % check for coincident spike fraction
     %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 
-    [val_max, arg_max] = max(coin_frac_tmp(:));
-    if val_max >= coin_thr
-        %I corresponds to the component to which coin_frac
-        %is normalized for the maximum value
-        [I,J] = ind2sub(size(coin_frac_tmp),arg_max);
+    [val_max, arg_max] = max(coin_frac_tmp(:));    
+    %I corresponds to the component to which coin_frac
+    %is normalized for the maximum value
+    [I,J] = ind2sub(size(coin_frac_tmp),arg_max);
+    if coin_frac_tmp(I,J) >= coin_thr && coin_frac_tmp(J,I) >= coin_thr
+        % I,J have to be set which is already the case
     else
         I = [];J = [];
         continue_to_check = false;
@@ -163,7 +190,7 @@ while continue_to_check
         %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
         % check for STA similarity
         %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-        if sim_tmp(I,J) >= sim_thr
+        if sim_tmp(I,J) >= sim_thr %similarity matrix is symmetric...
             %A duplicate pair is found
             duplicate_pairs = [duplicate_pairs;I J];
             %set corresponding rows and cols in criteria matrices to zero,

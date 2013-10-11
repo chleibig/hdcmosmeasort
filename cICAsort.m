@@ -52,7 +52,7 @@ params.plotting =  0;
 params.interactive = 0;
 
 %Tissue specs:
-params.neuron_rho = 1141; %in mm�?�²
+params.neuron_rho = 600; %in mm�?�²
 if params.interactive
     params.neuron_rho = input(['Please specify the expected neuron '...
                                ' density in mm�?�²: ']);
@@ -148,8 +148,8 @@ params.maxRSTD = 0.5;
 %duplicates:
 params.t_s = 0.5; %ms
 params.t_jitter = 1; %ms
-params.coin_thr = 0.5; %fraction of coincident spikes
-params.sim_thr = 0.8; %similarity of average waveforms
+params.coin_thr = 0.85; %fraction of coincident spikes
+params.sim_thr = 0.85; %similarity of average waveforms
 
 params.sign_lev = 0.05; %for automatic threshold adaptation;
 

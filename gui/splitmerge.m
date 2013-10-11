@@ -22,7 +22,7 @@ function varargout = splitmerge(varargin)
 
 % Edit the above text to modify the response to help splitmerge
 
-% Last Modified by GUIDE v2.5 07-Oct-2013 15:14:37
+% Last Modified by GUIDE v2.5 11-Oct-2013 12:26:21
 
 % Begin initialization code - DO NOT EDIT
 gui_Singleton = 0;
@@ -72,6 +72,12 @@ handles.stateColor = {[0 0 1],[0 1 1],[0 1 0],[1 0 0]};
 %Set labels in listbox1 accordingly.
 set(handles.listbox1, 'String', ...
     cellfun(@num2str,num2cell(1:size(handles.S,1)),'UniformOutput',false));
+
+
+%Set values of edit text fields
+set(handles.editDistMax,'String',num2str(handles.params.d_max));
+set(handles.editCoinThr,'String',num2str(handles.params.coin_thr));
+set(handles.editSimThr,'String',num2str(handles.params.sim_thr));
 
 %Initial plots.
 drawrois(hObject,handles);
@@ -199,60 +205,97 @@ updateunitplots(hObject, handles, popup_sel_index, handles.threshold);
 % Unit/IC state
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 
-% --- Executes on selection change in listbox2.----------------------------
-function listbox2_Callback(hObject, eventdata, handles)
-% hObject    handle to listbox2 (see GCBO)
+% --- Executes on selection change in listboxUnitState.----------------------------
+function listboxUnitState_Callback(hObject, eventdata, handles)
+% hObject    handle to listboxUnitState (see GCBO)
 % eventdata  reserved - to be defined in a future version of MATLAB
 % handles    structure with handles and user data (see GUIDATA)
 
-% Hints: contents = get(hObject,'String') returns listbox2 contents as cell array
-%        contents{get(hObject,'Value')} returns selected item from listbox2
+% Hints: contents = get(hObject,'String') returns listboxUnitState contents as cell array
+%        contents{get(hObject,'Value')} returns selected item from listboxUnitState
 
 popup_sel_index = get(handles.listbox1,'Value');
 handles.units(popup_sel_index).state = get(hObject,'Value');
-set(handles.sPlot,...
-    'Color',handles.stateColor{handles.units(popup_sel_index).state});
-N_units = length(handles.units);
-fractionUnchecked = 100*nnz([handles.units.state] == 1)/N_units;
-fractionThresholdOk = 100*(nnz([handles.units.state] == 2) + ... 
-                           nnz([handles.units.state] == 3) + ...
-                           nnz([handles.units.state] == 4))/N_units;
-fractionToBeSaved = 100*nnz([handles.units.state] == 3)/N_units;
-fractionToBeDeleted = 100*nnz([handles.units.state] == 4)/N_units;
-set(handles.textFractionUnchecked,'String',num2str(fractionUnchecked,'%3.1f'));
-set(handles.textFractionThresholdOk,'String',num2str(fractionThresholdOk,'%3.1f'));
-set(handles.textFractionToBeSaved,'String',num2str(fractionToBeSaved,'%3.1f'));
-set(handles.textFractionToBeDeleted,'String',num2str(fractionToBeDeleted,'%3.1f'));
 
 guidata(hObject,handles);
 
+updateunitstatevisualizations(hObject, handles, popup_sel_index);
+
+%draw spatial positions of units
+axes(handles.axes4);
+if isfield(handles,'unitLabels')
+    delete(handles.unitLabels(ishandle(handles.unitLabels)));
+end
+drawunitlabels(hObject, handles);
 
 
-% -------------------------------------------------------------------------
-
-% --- Executes on button press in pushbuttonGetduplicate.------------------
-function pushbuttonGetduplicate_Callback(hObject, eventdata, handles)
-% hObject    handle to pushbuttonGetduplicate (see GCBO)
+% --- Executes on button press in pushbuttonAcceptThresholds. -------------
+function pushbuttonAcceptThresholds_Callback(hObject, eventdata, handles)
+% hObject    handle to pushbuttonAcceptThresholds (see GCBO)
 % eventdata  reserved - to be defined in a future version of MATLAB
 % handles    structure with handles and user data (see GUIDATA)
 
-%collect information of currently selected unit.
+[handles.units([handles.units.state] == 1).state] = deal(2);
+guidata(hObject,handles);
 
-% currentUnitIndex = get(handles.listbox1, 'Value');
-% handles.marked(currentUnitIndex) = true;
-% guidata(hObject,handles);
+%Update visualization
+popup_sel_index = get(handles.listbox1,'Value');
+updateunitstatevisualizations(hObject, handles, popup_sel_index);
+
+% -------------------------------------------------------------------------
+
+
+
+
+% -------------------------------------------------------------------------
+
+
+
+% --- Executes on button press in pushbuttonShowLocalRedundancy.-----------
+function pushbuttonShowLocalRedundancy_Callback(hObject, eventdata, handles)
+% hObject    handle to pushbuttonShowLocalRedundancy (see GCBO)
+% eventdata  reserved - to be defined in a future version of MATLAB
+% handles    structure with handles and user data (see GUIDATA)
 
 currentUnit = get(handles.listbox1,'Value');
-distMax = str2double(get(handles.editDistMax,'String'));
-if isnan(distMax)
-    errordlg('Maximum distance has to be a numeric value','Bad Input','modal');
-    return
+
+redundantcandidates(handles.units, handles.ROIs, ...
+                    handles.params, handles.data, currentUnit);
+% -------------------------------------------------------------------------
+
+
+
+% --- Executes on button press in pushbuttonRemoveAllRedundancy.
+function pushbuttonRemoveAllRedundancy_Callback(hObject, eventdata, handles)
+% hObject    handle to pushbuttonRemoveAllRedundancy (see GCBO)
+% eventdata  reserved - to be defined in a future version of MATLAB
+% handles    structure with handles and user data (see GUIDATA)
+
+
+[numDistinct, sizes, members] = redundantcandidates(handles.units, ...
+                               handles.ROIs, handles.params, handles.data);
+
+for i = 1:numDistinct
+    if sizes(i) > 1
+        %keep only the most separable one.
+        markAsToBeDeleted = ([handles.units(members{i}).separability] ~= ...
+                            max([handles.units(members{i}).separability]));
+        fprintf('Changing state of unit(s) %g to be deleted.\n',...
+            members{i}(markAsToBeDeleted));
+        [handles.units(members{i}(markAsToBeDeleted)).state] = deal(4);
+    end
 end
 
-duplicatecandidates(currentUnit,...
-    handles.units, handles.ROIs,handles.params,...
-    distMax, handles.data);
+guidata(hObject,handles);
+
+currentUnit = get(handles.listbox1,'Value');
+updateunitstatevisualizations(hObject, handles, currentUnit);
+
+%redraw spatial positions of units to visualize removed redundancy
+drawunitlabels(hObject, handles);
+
 % -------------------------------------------------------------------------
+
 
 
 
@@ -275,7 +318,56 @@ function editDistMax_Callback(hObject, eventdata, handles)
 
 % Hints: get(hObject,'String') returns contents of editDistMax as text
 %        str2double(get(hObject,'String')) returns contents of editDistMax as a double
+
+distMax = str2double(get(hObject,'String'));
+if isnan(distMax)
+    errordlg('Entered value must be numeric!','Bad Input','modal');
+    return
+end
+handles.params.d_max = distMax;
+guidata(hObject, handles);
+
 % -------------------------------------------------------------------------
+
+
+function editCoinThr_Callback(hObject, eventdata, handles)
+% hObject    handle to editCoinThr (see GCBO)
+% eventdata  reserved - to be defined in a future version of MATLAB
+% handles    structure with handles and user data (see GUIDATA)
+
+% Hints: get(hObject,'String') returns contents of editCoinThr as text
+%        str2double(get(hObject,'String')) returns contents of editCoinThr as a double
+
+coinThr = str2double(get(hObject,'String'));
+if isnan(coinThr)
+    errordlg('Entered value must be numeric!','Bad Input','modal');
+    return
+end
+handles.params.coin_thr = coinThr;
+guidata(hObject, handles);
+% -------------------------------------------------------------------------
+
+
+
+function editSimThr_Callback(hObject, eventdata, handles)
+% hObject    handle to editSimThr (see GCBO)
+% eventdata  reserved - to be defined in a future version of MATLAB
+% handles    structure with handles and user data (see GUIDATA)
+
+% Hints: get(hObject,'String') returns contents of editSimThr as text
+%        str2double(get(hObject,'String')) returns contents of editSimThr
+%        as a double
+
+simThr = str2double(get(hObject,'String'));
+if isnan(simThr)
+    errordlg('Entered value must be numeric!','Bad Input','modal');
+    return
+end
+handles.params.sim_thr = simThr;
+guidata(hObject, handles);
+% -------------------------------------------------------------------------
+
+
 
 
 % --- Executes on button press in pushbuttonRedrawSpatial.
@@ -367,8 +459,8 @@ set(hObject,'Min',0);
 
 
 % --- Executes during object creation, after setting all properties.
-function listbox2_CreateFcn(hObject, eventdata, handles)
-% hObject    handle to listbox2 (see GCBO)
+function listboxUnitState_CreateFcn(hObject, eventdata, handles)
+% hObject    handle to listboxUnitState (see GCBO)
 % eventdata  reserved - to be defined in a future version of MATLAB
 % handles    empty - handles not created until after all CreateFcns called
 
@@ -503,8 +595,8 @@ for i = 1:length(handles.ROIs);
     %map toDelete to index range in ROI.
     toDelete = toDelete([handles.units.k] == i);
     if ~isfield(handles.ROIs(i),'A_del'); handles.ROIs(i).A_del = [];end
-    %handles.ROIs(i).A_del = cat(2,handles.ROIs(i).A_del,...
-     %                             handles.ROIs(i).A_tau(:,toDelete,:));    
+    handles.ROIs(i).A_del = cat(2,handles.ROIs(i).A_del,...
+                                handles.ROIs(i).A_tau(:,toDelete,:));    
     clear toDelete
     %to be saved <-> state '3'
     toSave = [handles.units.k] == i & [handles.units.state] <= 3;
@@ -512,7 +604,7 @@ for i = 1:length(handles.ROIs);
     handles.ROIs(i).S = handles.S(toSave,:);
     %map toSave to index range in ROI.
     toSave = toSave([handles.units.k] == i);
-    %handles.ROIs(i).A_tau = handles.ROIs(i).A_tau(:,toSave,:);
+    handles.ROIs(i).A_tau = handles.ROIs(i).A_tau(:,toSave,:);
     clear toSave                                                          
 end
 
@@ -541,7 +633,9 @@ noise_std = median(abs(S)/0.6745);
 %thrFactor = handles.params.thrFactor;
 thrFactor = handles.params.thrFactor;
 handles.threshold = -thrFactor*noise_std;
+
 [indices,pos_amplitudes] = find_peaks(-S,thrFactor*noise_std,ceil(sr*upsample));
+
 amplitudes = -1*pos_amplitudes;
 
 if ~isempty(amplitudes)
@@ -558,6 +652,7 @@ if ~isempty(amplitudes)
     for j = 1:N_pks
         pks(:,j) = S(indices(j)-pre:indices(j)+post);
     end
+    
     [cts, bin_ctrs] = hist(amplitudes,floor(sqrt(length(amplitudes))));
 end
 
@@ -628,7 +723,7 @@ set(handles.thresholdslider, 'Min',min(amplitudes),...
                              'Value',handles.threshold);
                          
 %Update unit state.
-set(handles.listbox2,'Value',unit.state);
+set(handles.listboxUnitState,'Value',unit.state);
 
 %update guidata.
 guidata(hObject,handles);
@@ -716,19 +811,12 @@ if isfield(handles,'axes3thr');
 end
 handles.axes3thr = plot([newThreshold newThreshold], ylim,'r');
 
+%draw spatial positions of units
 axes(handles.axes4);
 if isfield(handles,'unitLabels')
     delete(handles.unitLabels(ishandle(handles.unitLabels)));
 end
-cols = [handles.units.boss_col];
-rows = [handles.units.boss_row];
-notDeleted = [handles.units.state] <= 3;
-cols = cols(notDeleted);
-rows = rows(notDeleted);
-idx = 1:length(handles.units);
-idx = idx(notDeleted);
-handles.unitLabels = text(cols, rows,...
-         arrayfun(@num2str,idx,'UniformOutput',false));
+drawunitlabels(hObject, handles);
 
 axes(handles.axes4);hold on;
 if isfield(handles,'unitMarker') && ishandle(handles.unitMarker)
@@ -749,6 +837,16 @@ function drawrois(hObject,handles)
 axes(handles.axes4);
 showrois(handles.ROIsAsCC,...
     'fillColumnFlag',logical(handles.params.d_col/handles.params.pitch-1));
+
+drawunitlabels(hObject, handles);
+
+%--------------------------------------------------------------------------
+
+
+
+%--------------------------------------------------------------------------
+function drawunitlabels(hObject, handles)
+
 cols = [handles.units.boss_col];
 rows = [handles.units.boss_row];
 notDeleted = [handles.units.state] <= 3;
@@ -759,12 +857,65 @@ idx = idx(notDeleted);
 handles.unitLabels = text(cols, rows,...
          arrayfun(@num2str,idx,'UniformOutput',false));
 
-
-% Update handles structure
 guidata(hObject, handles);
 %--------------------------------------------------------------------------
 
 
 
+%--------------------------------------------------------------------------
+function updateunitstatevisualizations(hObject, handles, currentUnit)
+
+%state color IC activation plot
+set(handles.sPlot,...
+    'Color',handles.stateColor{handles.units(currentUnit).state});
+
+%fraction of IC / unit states
+N_units = length(handles.units);
+fractionUnchecked = 100*nnz([handles.units.state] == 1)/N_units;
+fractionThresholdOk = 100*(nnz([handles.units.state] == 2) + ... 
+                           nnz([handles.units.state] == 3) + ...
+                           nnz([handles.units.state] == 4))/N_units;
+fractionToBeSaved = 100*nnz([handles.units.state] == 3)/N_units;
+fractionToBeDeleted = 100*nnz([handles.units.state] == 4)/N_units;
+set(handles.textFractionUnchecked,'String',num2str(fractionUnchecked,'%3.1f'));
+set(handles.textFractionThresholdOk,'String',num2str(fractionThresholdOk,'%3.1f'));
+set(handles.textFractionToBeSaved,'String',num2str(fractionToBeSaved,'%3.1f'));
+set(handles.textFractionToBeDeleted,'String',num2str(fractionToBeDeleted,'%3.1f'));
+
+%state of currently selected unit
+set(handles.listboxUnitState,'Value',handles.units(currentUnit).state);
+
+guidata(hObject, handles);
+%--------------------------------------------------------------------------
+
+
+
+
+
+% --- Executes during object creation, after setting all properties.
+function editCoinThr_CreateFcn(hObject, eventdata, handles)
+% hObject    handle to editCoinThr (see GCBO)
+% eventdata  reserved - to be defined in a future version of MATLAB
+% handles    empty - handles not created until after all CreateFcns called
+
+% Hint: edit controls usually have a white background on Windows.
+%       See ISPC and COMPUTER.
+if ispc && isequal(get(hObject,'BackgroundColor'), get(0,'defaultUicontrolBackgroundColor'))
+    set(hObject,'BackgroundColor','white');
+end
+
+
+
+% --- Executes during object creation, after setting all properties.
+function editSimThr_CreateFcn(hObject, eventdata, handles)
+% hObject    handle to editSimThr (see GCBO)
+% eventdata  reserved - to be defined in a future version of MATLAB
+% handles    empty - handles not created until after all CreateFcns called
+
+% Hint: edit controls usually have a white background on Windows.
+%       See ISPC and COMPUTER.
+if ispc && isequal(get(hObject,'BackgroundColor'), get(0,'defaultUicontrolBackgroundColor'))
+    set(hObject,'BackgroundColor','white');
+end
 
 
