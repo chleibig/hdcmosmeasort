@@ -1,6 +1,7 @@
 function [ROI, varargout] = ...
-    CoG_ROIs(filename_events,minAct,N_ROWS, N_COLS, fillColumnFlag, mergeThr)
-%[ROI, varargout] = CoG_ROIs(filename_events,minAct,N_ROWS, N_COLS,
+    CoG_ROIs(filename_events,maxSensorsPerEvent,minAct,N_ROWS, N_COLS, fillColumnFlag,...
+    mergeThr)
+%[ROI, varargout] = CoG_ROIs(filename_events,maxSensorsPerEvent,minAct,N_ROWS, N_COLS,
 %fillColumnFlag, mergeThr)
 %calculates regions of interest based on the connected components 
 %of the center of gravity (CoG) sensors that exhibit at least minAct events
@@ -11,21 +12,25 @@ function [ROI, varargout] = ...
 %
 % filename_events: *.basic_events file, used for CoG and surrounding
 % sensors
+% maxSensorsPerEvent
 % minAct: min activity in # of events, i.e. unitless
 % N_ROWS, N_COLS: array extension in sensor coordinates
 % fillColumnFlag: if true, skipped sensor columns get filled
 % mergeThr: regions of interest with at least mergeThr overlap fraction get
 %           merged
+% maxSensorsPerEvent
 %
 % Output
 % ======
 %   
-%    [ROI] = CoG_ROIs(filename_events,minAct,N_ROWS, N_COLS)
+%    [ROI] = CoG_ROIsCoG_ROIs(filename_events,maxSensorsPerEvent,minAct,N_ROWS, N_COLS,
+%                             fillColumnFlag, mergeThr)
 %
 %            ROI: regions of interest
 %
 %    [ROI, CC, nEventsPerSensor, minNoEventExistence] = ...
-%              CoG_ROIs(filename_events,minAct,N_ROWS, N_COLS)
+%              CoG_ROIs(filename_events,maxSensorsPerEvent,minAct,...
+%                        N_ROWS, N_COLS, fillColumnFlag, mergeThr)
 % 
 %            ROI: regions of interest
 %            CC: connected components as output from thresholded CoG image
@@ -43,19 +48,42 @@ if length(sensors{1}) <= 1
     error('Please guarantee that reasonable sensor values are present in %s',filename_events);
 end
 
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+% Filter events by validity - not necessary if previous basic event
+% detection already does this
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+
+nEvents = length(time);
+
+%Construct filter according to number of sensors participating in an event
+nSensor = zeros(1,nEvents);
+for i = 1:nEvents
+    nSensor(i) = length(sscanf(sensors{i},'%*[(] %u %*[,] %u %*[)]'))/2;
+end
+valid = (nSensor <= maxSensorsPerEvent);
+
+time = time(valid);
+amplitude = amplitude(valid);
+boss_column = boss_column(valid);
+boss_row = boss_row(valid);
+sensors = sensors(valid);
+
+fprintf('%g out of %g events are accepted for ROI construction\n',...
+    nnz(valid),nEvents);
+clear nEvents
+
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 % Construct regions of interest
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 
-nEvents = length(amplitude);
+nEvents = length(time);
 
 nEventsPerSensor = zeros(N_ROWS,N_COLS);
 for i = 1:nEvents;
     nEventsPerSensor(boss_row(i),boss_column(i)) = ...
         nEventsPerSensor(boss_row(i),boss_column(i)) + 1;
 end
-
-
 
 
 minNoEventExistence = (nEventsPerSensor >= minAct);
@@ -102,7 +130,6 @@ for i = 1:CC.NumObjects
             sensorsROI = [sensorsROI;eventSensors(:)];
         end
         ROI.time{i} = [ROI.time{i};time(events)];
-        clear events
     end
     ROI.PixelIdxList{i} = unique(sensorsROI);
     
@@ -113,6 +140,7 @@ end
 % Merge regions of interest based on overlap fraction
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 
+%The following function is espensive ! :
 [ OL ] = roioverlap( ROI.PixelIdxList );
 
 %adjacencyMatrix:
@@ -144,7 +172,7 @@ clear oldROI
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 % Assign output
-%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 
 if nargout > 1
     varargout{1} = CC;

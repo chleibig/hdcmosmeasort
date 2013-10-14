@@ -20,6 +20,8 @@ function [ROIs, OL, ROIsAsCC] = roisegmentation(data, metaData, paramsRoi, show)
 %       *.thr_factor - threshold in multiples of std
 %       *.n_rows, *.n_cols, *.n_frames  environment in data coordinates
 %       fields needed, if *.method = 'cog':
+%       *.maxSensorsPerEvent - the maximum number of sensors participating
+%                              in an event to be valid for ROI construction
 %       *.minNoEvents - the minimum # of events on a CoG sensor to be valid
 %                       as a ROI seed
 %       *.horizon - see under 'tce'
@@ -60,7 +62,7 @@ switch paramsRoi.method
         OL = [];
         ROIsAsCC = [];
     case 'cog'
-        [ROIsAsCC] = CoG_ROIs(metaData.filename_events,paramsRoi.minNoEvents,...
+        [ROIsAsCC] = CoG_ROIs(metaData.filename_events,paramsRoi.maxSensorsPerEvent,paramsRoi.minNoEvents,...
             max(metaData.sensor_rows), max(metaData.sensor_cols),0,paramsRoi.mergeThr);
         %collect output
         T_mask_global = false(length(metaData.frameStartTimes),1);
