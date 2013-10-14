@@ -32,7 +32,8 @@ for k = 1:N_ROI
         nNorm = (nk <= nl)*nk + ~(nk <= nl)*nl;
         %OL(k,l) = length(intersect(pixelIdxList{k},pixelIdxList{l}))/nNorm;
         %intersect calls unique twice, union calls unique only once...
-        %hence we can optimize the code as follows.
+        %hence we can optimize the code as follows. (For many ROIs the following
+        %step is expensive)
         OL(k,l) = (nk + nl - length(union(pixelIdxList{k},pixelIdxList{l})))/nNorm;
         OL(l,k) = OL(k,l);
     end

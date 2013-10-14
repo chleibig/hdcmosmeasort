@@ -52,7 +52,7 @@ params.plotting =  0;
 params.interactive = 0;
 
 %Tissue specs:
-params.neuron_rho = 600; %in mm�?�²
+params.neuron_rho = 1200; %in mm�?�²
 if params.interactive
     params.neuron_rho = input(['Please specify the expected neuron '...
                                ' density in mm�?�²: ']);
@@ -60,9 +60,10 @@ end
     
 %ROI segmentation:
 params.roi.method = 'cog';
+params.roi.maxSensorsPerEvent = 100;
 params.roi.minNoEvents = 1 * ... %multiplying factor in Spikes / second
     (params.frameStartTimes(end) - params.frameStartTimes(1))/1000;
-params.roi.mergeThr = 0.5;
+params.roi.mergeThr = 1.1;
 if d_sensor_col == 2 && d_sensor_row == 1
     params.roi.thr_factor = 10.95;
     params.roi.n_rows = 5;
@@ -125,7 +126,7 @@ end
 
 params.allframes_cica = 1;
 
-params.d_max = 50; %maximal distance in \mum for extrema of filters
+params.d_max = 35; %maximal distance in \mum for extrema of filters
 params.min_corr = 0.1;
 params.grouping = 'cluster';
 params.max_cluster_size = 4;
@@ -160,11 +161,10 @@ t_total_1 = clock;
 % Preprocessing - bandpass
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 
-%
+
 % tic;
-% data = double(data);
-% Wp = [ 0.3  3] * 2 / sr;
-% Ws = [ 0.1 min(5,(sr/2 - 0.1))] * 2 / sr;
+% Wp = [ 0.3  3] * 2 / params.sr;
+% Ws = [ 0.1 min(5,(params.sr/2 - 0.1))] * 2 / params.sr;
 % [N,Wn] = buttord( Wp, [.001 .999], 3, 10);
 % [B,A] = butter(N,Wn);
 % [N_ROW,N_COL,N_SAMPLES] = size(data);
@@ -172,7 +172,7 @@ t_total_1 = clock;
 % data_filt = cell2mat(cellfun(@(x) filtfilt(B,A,x),...
 %                             num2cell(data,2),'UniformOutput',0));
 % %Due to shape expected by ROIIdentification:
-% data_filt = squeeze(reshape(data_filt, [N_ROW N_COL N_SAMPLES]));
+% data = squeeze(reshape(data_filt, [N_ROW N_COL N_SAMPLES]));
 % toc;
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%

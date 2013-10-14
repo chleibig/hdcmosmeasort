@@ -81,7 +81,10 @@ set(handles.editSimThr,'String',num2str(handles.params.sim_thr));
 
 %Initial plots.
 drawrois(hObject,handles);
-
+handles.unitIDsAsStrings = ...
+    arrayfun(@num2str,1:length(handles.units),'UniformOutput',false);
+guidata(hObject,handles);
+drawunitlabels(hObject,handles);
 % UIWAIT makes splitmerge wait for user response (see UIRESUME)
 % uiwait(handles.figure1);
 %--------------------------------------------------------------------------
@@ -190,7 +193,8 @@ popup_sel_index = get(handles.listbox1,'Value');
 handles.threshold = get(hObject, 'Value');
 
 % update unit
-updateunitdata(hObject, handles, popup_sel_index, handles.threshold);
+updateunitdata(hObject, handles, popup_sel_index,...
+                                        handles.threshold);
 % update handles structure
 handles = guidata(hObject);
 
@@ -376,6 +380,15 @@ function pushbuttonRedrawSpatial_Callback(hObject, eventdata, handles)
 % eventdata  reserved - to be defined in a future version of MATLAB
 % handles    structure with handles and user data (see GUIDATA)
 drawrois(hObject,handles);
+drawunitlabels(hObject, handles);
+hold(handles.axes4,'on');
+whichone = get(handles.listbox1, 'Value');
+%Only generate handle for the first time
+handles.unitMarker = plot(handles.axes4,...
+    handles.units(whichone).boss_col,...
+    handles.units(whichone).boss_row,...
+    'o','MarkerSize',25,'Color','black','LineWidth',3);
+guidata(hObject,handles);
 % -------------------------------------------------------------------------
 
 
@@ -540,6 +553,31 @@ function textFractionThresholdOk_CreateFcn(hObject, eventdata, handles)
 % handles    empty - handles not created until after all CreateFcns called
 
 
+% --- Executes during object creation, after setting all properties.
+function editCoinThr_CreateFcn(hObject, eventdata, handles)
+% hObject    handle to editCoinThr (see GCBO)
+% eventdata  reserved - to be defined in a future version of MATLAB
+% handles    empty - handles not created until after all CreateFcns called
+
+% Hint: edit controls usually have a white background on Windows.
+%       See ISPC and COMPUTER.
+if ispc && isequal(get(hObject,'BackgroundColor'), get(0,'defaultUicontrolBackgroundColor'))
+    set(hObject,'BackgroundColor','white');
+end
+
+
+
+% --- Executes during object creation, after setting all properties.
+function editSimThr_CreateFcn(hObject, eventdata, handles)
+% hObject    handle to editSimThr (see GCBO)
+% eventdata  reserved - to be defined in a future version of MATLAB
+% handles    empty - handles not created until after all CreateFcns called
+
+% Hint: edit controls usually have a white background on Windows.
+%       See ISPC and COMPUTER.
+if ispc && isequal(get(hObject,'BackgroundColor'), get(0,'defaultUicontrolBackgroundColor'))
+    set(hObject,'BackgroundColor','white');
+end
 
 
 
@@ -558,7 +596,6 @@ handles.params = evalin('base','params');
 handles.data = evalin('base','data');
 %all sources.
 S = cat(1,ROIs.S);
-S(skewness(S') > 0,:) = -1*S(skewness(S') > 0,:);
 handles.S = S;
 clear S
 %all units.
@@ -629,8 +666,9 @@ S = resample(handles.S(whichone,:),upsample,1);
 N_SAMPLES = length(S);
 % indices = round(handles.units(whichone).time * ...
 %     sr * upsample);
-noise_std = median(abs(S)/0.6745);
-%thrFactor = handles.params.thrFactor;
+% noise_std = median(abs(S)/0.6745);
+noise_std = std(S);
+%thrF;actor = handles.params.thrFactor;
 thrFactor = handles.params.thrFactor;
 handles.threshold = -thrFactor*noise_std;
 
@@ -659,47 +697,43 @@ end
 %Plotting
 
 %entire IC.
-axes(handles.axes1);
-cla reset;
-handles.sPlot = plot(S,'Color', handles.stateColor{unit.state});
-hold on;
-title(strcat('amplSD = ',num2str(unit.amplitudeSD),'; RSTD = ',...
-             num2str(unit.RSTD),'; sep. = ',num2str(unit.separability)));
+%axes(handles.axes1);
+cla(handles.axes1,'reset');
+hold(handles.axes1,'on');
+handles.sPlot = plot(handles.axes1,S,'Color',...
+                     handles.stateColor{unit.state});
 
-         
-hold on;
+title(handles.axes1, strcat('amplSD = ',num2str(unit.amplitudeSD),...
+      '; RSTD = ', num2str(unit.RSTD),'; sep. = ',...
+      num2str(unit.separability)));
+
 %all threshold crossings.
-plot(indices, S(indices),'ro','LineStyle','none');
-handles.axes1thr = plot([0 N_SAMPLES], [handles.threshold handles.threshold],'r');
+plot(handles.axes1, indices, S(indices),'ro','LineStyle','none');
+handles.axes1thr = plot(handles.axes1, ...
+    [0 N_SAMPLES], [handles.threshold handles.threshold],'r');
 %those from units.
 % handles.axes1amp = plot(round(unit.time*upsample*sr),...
 %                       unit.amplitude,'go','LineStyle','none');
 
 if ~isempty(amplitudes)
     %IC waveforms.
-    axes(handles.axes2);
-    cla reset;
-    plot(pks,'Color',[0.75 0.75 0.75]);
-    hold on;
-    handles.axes2thr = plot([0 f_tot], [handles.threshold handles.threshold],'r');
+    %axes(handles.axes2);
+    cla(handles.axes2,'reset');
+    %Setup axes.
+    hold(handles.axes2,'on');
+    plot(handles.axes2, pks,'Color',[0.75 0.75 0.75]);
+    handles.axes2thr = plot(handles.axes2,...
+    [0 f_tot], [handles.threshold handles.threshold],'r');
 
     %amplitude histogram.
-    axes(handles.axes3);
-    cla reset;
-    bar(bin_ctrs,cts); 
-    hold on;
-    handles.axes3thr = plot([handles.threshold handles.threshold], ylim,'r');
+    %axes(handles.axes3);
+    cla(handles.axes3,'reset');
+    hold(handles.axes3,'on');
+    bar(handles.axes3, bin_ctrs,cts); 
+    handles.axes3thr = plot(handles.axes3,...
+                            [handles.threshold handles.threshold],...
+                            get(handles.axes3,'ylim'),'r');
 end
-
-
-%Spatial visualization.
-axes(handles.axes4);hold on;
-if isfield(handles,'unitMarker') && ishandle(handles.unitMarker)
-    delete(handles.unitMarker);
-end
-handles.unitMarker = plot(unit.boss_col,unit.boss_row,...
-    'o','MarkerSize',25,'Color','black','LineWidth',3);
-
 
 
 %To be used by slider:
@@ -735,7 +769,7 @@ thresholdslider_Callback(handles.thresholdslider, eventdata, handles);
 
 %--------------------------------------------------------------------------
 function updateunitdata(hObject, handles, whichone, newThreshold)
-% updateunit(hObject, handles, whichone, newThreshold)
+%updateunitdata(hObject, handles,whichone, newThreshold)
 
 %valid threshold crossings.
 valid = handles.amplitudes <= newThreshold;
@@ -784,32 +818,37 @@ function updateunitplots(hObject, handles, whichone, newThreshold)
 %valid threshold crossings.
 valid = handles.amplitudes <= newThreshold;
 
-axes(handles.axes1);
+
+%axes(handles.axes1);%DIRECT AXES CALL IS SLOW!!
 if isfield(handles,'axes1amp');
     delete(handles.axes1amp(ishandle(handles.axes1amp)));
 end
-handles.axes1amp = plot(handles.indices(valid),...
+handles.axes1amp = plot(handles.axes1,handles.indices(valid),...
                       handles.amplitudes(valid),'go','LineStyle','none');
 if isfield(handles,'axes1thr');
     delete(handles.axes1thr(ishandle(handles.axes1thr)));
 end
-handles.axes1thr = plot(xlim, [newThreshold newThreshold],'r');
+handles.axes1thr = plot(handles.axes1, get(handles.axes1,'xlim'), ...
+                        [newThreshold newThreshold],'r');
 
-axes(handles.axes2);
+%axes(handles.axes2);
 if isfield(handles,'axes2pks');
     delete(handles.axes2pks(ishandle(handles.axes2pks)));
 end
-handles.axes2pks = plot(handles.pks(:,valid),'Color','green');
+handles.axes2pks = plot(handles.axes2,...
+                        handles.pks(:,valid),'Color','green');
 if isfield(handles,'axes2thr');
     delete(handles.axes2thr(ishandle(handles.axes2thr)));
 end
-handles.axes2thr = plot(xlim, [newThreshold newThreshold],'r');
+handles.axes2thr = plot(handles.axes2,get(handles.axes2,'xlim'),...
+                        [newThreshold newThreshold],'r');
 
-axes(handles.axes3);
+%axes(handles.axes3);
 if isfield(handles,'axes3thr');
     delete(handles.axes3thr(ishandle(handles.axes3thr)));
 end
-handles.axes3thr = plot([newThreshold newThreshold], ylim,'r');
+handles.axes3thr = plot(handles.axes3, [newThreshold newThreshold],...
+                        get(handles.axes3,'ylim'),'r');
 
 %draw spatial positions of units
 axes(handles.axes4);
@@ -818,13 +857,28 @@ if isfield(handles,'unitLabels')
 end
 drawunitlabels(hObject, handles);
 
-axes(handles.axes4);hold on;
+% hold(handles.axes4,'on');
+% if isfield(handles,'unitMarker') && ishandle(handles.unitMarker)
+%     delete(handles.unitMarker);
+% end
+% handles.unitMarker = plot(handles.axes4,...
+%                          handles.units(whichone).boss_col,handles.units(whichone).boss_row,...
+%                         'o','MarkerSize',25,'Color','black','LineWidth',3);
 if isfield(handles,'unitMarker') && ishandle(handles.unitMarker)
-    delete(handles.unitMarker);
-end
-handles.unitMarker = plot(handles.units(whichone).boss_col,...
+    hold(handles.axes4,'on');
+    set(handles.unitMarker,...
+        'XData',handles.units(whichone).boss_col,...
+        'YData',handles.units(whichone).boss_row);
+% set(handles.unitMarker,'XData',50,...
+%         'YData',50);
+else
+hold(handles.axes4,'on');
+%Only generate handle for the first time
+handles.unitMarker = plot(handles.axes4,...
+                          handles.units(whichone).boss_col,...
                           handles.units(whichone).boss_row,...
                         'o','MarkerSize',25,'Color','black','LineWidth',3);
+end
 
 % update guidata
 guidata(hObject,handles);
@@ -838,8 +892,6 @@ axes(handles.axes4);
 showrois(handles.ROIsAsCC,...
     'fillColumnFlag',logical(handles.params.d_col/handles.params.pitch-1));
 
-drawunitlabels(hObject, handles);
-
 %--------------------------------------------------------------------------
 
 
@@ -847,15 +899,20 @@ drawunitlabels(hObject, handles);
 %--------------------------------------------------------------------------
 function drawunitlabels(hObject, handles)
 
+set(handles.axes4,'DrawMode','fast');
 cols = [handles.units.boss_col];
 rows = [handles.units.boss_row];
 notDeleted = [handles.units.state] <= 3;
-cols = cols(notDeleted);
-rows = rows(notDeleted);
-idx = 1:length(handles.units);
-idx = idx(notDeleted);
-handles.unitLabels = text(cols, rows,...
-         arrayfun(@num2str,idx,'UniformOutput',false));
+% cols = cols(notDeleted);
+% rows = rows(notDeleted);
+%idx = 1:length(handles.units);
+%idx = idx(notDeleted);
+% handles.unitLabels = text(cols, rows,...
+%     arrayfun(@num2str,idx,'UniformOutput',false),...
+%     'Parent',handles.axes4);
+handles.unitLabels = text(cols(notDeleted), rows(notDeleted),...
+    handles.unitIDsAsStrings(notDeleted),...
+    'Parent',handles.axes4);
 
 guidata(hObject, handles);
 %--------------------------------------------------------------------------
@@ -892,30 +949,5 @@ guidata(hObject, handles);
 
 
 
-% --- Executes during object creation, after setting all properties.
-function editCoinThr_CreateFcn(hObject, eventdata, handles)
-% hObject    handle to editCoinThr (see GCBO)
-% eventdata  reserved - to be defined in a future version of MATLAB
-% handles    empty - handles not created until after all CreateFcns called
-
-% Hint: edit controls usually have a white background on Windows.
-%       See ISPC and COMPUTER.
-if ispc && isequal(get(hObject,'BackgroundColor'), get(0,'defaultUicontrolBackgroundColor'))
-    set(hObject,'BackgroundColor','white');
-end
-
-
-
-% --- Executes during object creation, after setting all properties.
-function editSimThr_CreateFcn(hObject, eventdata, handles)
-% hObject    handle to editSimThr (see GCBO)
-% eventdata  reserved - to be defined in a future version of MATLAB
-% handles    empty - handles not created until after all CreateFcns called
-
-% Hint: edit controls usually have a white background on Windows.
-%       See ISPC and COMPUTER.
-if ispc && isequal(get(hObject,'BackgroundColor'), get(0,'defaultUicontrolBackgroundColor'))
-    set(hObject,'BackgroundColor','white');
-end
 
 

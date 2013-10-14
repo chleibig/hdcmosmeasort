@@ -24,12 +24,14 @@ function [keep] = checkfornoisycomponents(X,minSkew, thrFactor, minNoPeaks,sr,sh
 
 % 1. set mask based on skewness and presence of peaks criteria
 skewn = skewness(X');
-%correct skewness:
+% 2. make spike deflections negative
 X(skewn > 0,:) = -1 * X(skewn > 0,:);
 %assess number of peaks in each component:
 n_peaks = zeros(1,size(X,1));
 
 for i = 1:size(X,1)
+    %Sign is assumed to be corrected previously such that spikes
+    %are negative deflections.
     [indices, peaks] = find_peaks(-X(i,:),...
         thrFactor*median(abs(X(i,:))/0.6745),ceil(sr));
     n_peaks(i) = length(peaks);

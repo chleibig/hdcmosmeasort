@@ -8,8 +8,6 @@ function [units] = SpikeTimeIdentificationHartigan(X,sr,sign_lev, show, interact
 %local minimum
 
 N_comp = size(X,1);
-%correct skewness:
-X(skewness(X') > 0,:) = -1 * X(skewness(X') > 0,:);
 
 %For Hardigans diptest:
 dip = zeros(N_comp,1);
@@ -25,6 +23,8 @@ for i=1:N_comp;
     if(show);
         figure(fX);subplot(splt_size,splt_size,i);plot(X(i,:));hold on;
     end
+    %Skewness is assumed to be corrected previously such that spikes
+    %are negative deflections.
     [indices,pos_amplitudes] = find_peaks(-X(i,:),...
                                     5*median(abs(X(i,:))/0.6745),ceil(sr));
     amplitudes = -1*pos_amplitudes;

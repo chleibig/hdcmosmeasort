@@ -37,8 +37,6 @@ function [units] = SpikeTimeIdentificationKlustaKwik(X,nEig,upsample, sr,...
 %
 
 [dims, samples] = size(X);
-%correct skewness:
-X(skewness(X') > 0,:) = -1 * X(skewness(X') > 0,:);
 
 if show;
     fig1 = figure; fig2 = figure; %fig3 = figure; 
@@ -51,6 +49,8 @@ for i=1:dims;
     N_SAMPLES = length(x);
     if(show);figure(fig1);subplot(splt_size,splt_size,i);plot(x);hold on;end
     noise_std = median(abs(x)/0.6745);
+    %Skewness is assumed to be corrected previously such that spikes
+    %are negative deflections.
     [indices,pos_amplitudes] = find_peaks(-x,thrFactor*noise_std,ceil(sr*upsample));
     amplitudes = -1*pos_amplitudes;
     if ~isempty(amplitudes)
