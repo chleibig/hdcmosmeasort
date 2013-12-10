@@ -1,4 +1,4 @@
-function showrois( CC, varargin)
+function showroisexp( CC, varargin)
 %showrois( CC ) constructs a labelled matrix from CC and plots
 %it in HSV colours. This function allows to visualize connected components
 %or regions of interest without using labelmatrix and label2rgb which
@@ -21,6 +21,8 @@ function showrois( CC, varargin)
 % 'fillColumnFlag',fillColumnFlag - if true columns skipped (in recordings)
 %                                   get filled for visualization purposes
 %
+% 'shuffle' - if true, colours get shuffled (default: false)
+%
 %
 % christian.leibig@g-node.org, 05.09.2013
 %
@@ -35,6 +37,8 @@ function showrois( CC, varargin)
 selection = 1:CC.NumObjects;
 
 fillColumnFlag = false;
+
+shuffle = false;
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 % Optional arguments
@@ -53,6 +57,8 @@ else
             selection = (varargin{i+1});
         case 'fillColumnFlag'
             fillColumnFlag = (varargin{i+1});
+        case 'shuffle'
+            shuffle = (varargin{i+1});
         otherwise
             % Hmmm, something wrong with the parameter string
             error(['Unrecognized parameter: ''' varargin{i} '''']);
@@ -62,7 +68,21 @@ end
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 
-L = zeros(CC.ImageSize);
+%Initialize images
+background = ones(CC.ImageSize);%white background
+Lall = background;%overlay all in one without transparency
+%Stack all ROI images on top of each other into the array layers 
+%using 3 RGB and one alpha channel for each ROI image to use transparency
+%information afterwards.
+layers = ones(CC.ImageSize(1),CC.ImageSize(2),4);
+
+%colormap.
+M = hsv(CC.NumObjects);
+if shuffle
+    M = M(randperm(size(M,1)),:);
+end
+M = [1 1 1;M];%[1 1 1] is for the white background
+
 for i = 1:length(selection)
     if fillColumnFlag
         [r,c] = ind2sub(CC.ImageSize,CC.PixelIdxList{selection(i)});
@@ -71,20 +91,49 @@ for i = 1:length(selection)
         r = [r(:)';r(:)'];
         r = r(:)';
         c = [c(:)';c(:)'+1];
-        c = c(:)';        
-        L(sub2ind(CC.ImageSize,r,c)) = selection(i) + 1;
+        c = c(:)';
+        %overlapping ROI information is overwritten in Lall
+        Lall(sub2ind(CC.ImageSize,r,c)) = selection(i) + 1;
+        %overlapping ROI information is kept in Li
+        Li = background;
+        Li(sub2ind(CC.ImageSize,r,c)) = selection(i) + 1;
+        alphaData = (Li > 1);
+        layers = cat(4,layers,cat(3,ind2rgb(Li,M),alphaData));
+        clear Li
     else
-        L(CC.PixelIdxList{selection(i)}) = selection(i) + 1;
+        %overlapping ROI information is overwritten in Lall
+        Lall(CC.PixelIdxList{selection(i)}) = selection(i) + 1;
+        %overlapping ROI information is kept in Li
+        Li = background;
+        Li(CC.PixelIdxList{selection(i)}) = selection(i) + 1;
+        %mask all background values:
+        alphaData = (Li > 1);
+        layers = cat(4,layers,cat(3,ind2rgb(Li,M),alphaData));
+        clear Li;
     end
 end
-image(L);colormap([1 1 1;hsv(CC.NumObjects)]);
+
+%without alpha blending:
+%image(Lall);colormap(M);
+
+%with alpha blending:
+
+%the following code would be faster if one would calculate the composite
+%image and then call image() only once.
+a = 0.5;%use the same alpha value for all layers
+for l=1:size(layers,4);
+    hold on;
+    image(layers(:,:,1:3,l),'AlphaData',a*layers(:,:,4,l));
+end
+
 %title('ROIs');xlabel('sensor columns');ylabel('sensor rows');
 axis square;
 %set axes limits to visible area:
-[r, c] = find(L);
+[r, c] = find(Lall);
 ylim([min(r),max(r)]);
 xlim([min(c),max(c)]);
 %colorbar;
 
 end
+
 
