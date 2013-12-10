@@ -1,4 +1,4 @@
-function showroisexp( CC, varargin)
+function showrois( CC, varargin)
 %showrois( CC ) constructs a labelled matrix from CC and plots
 %it in HSV colours. This function allows to visualize connected components
 %or regions of interest without using labelmatrix and label2rgb which
@@ -72,16 +72,21 @@ end
 background = ones(CC.ImageSize);%white background
 Lall = background;%overlay all in one without transparency
 %Stack all ROI images on top of each other into the array layers 
-%using 3 RGB and one alpha channel for each ROI image to use transparency
-%information afterwards.
-layers = ones(CC.ImageSize(1),CC.ImageSize(2),4);
+%using 3 RGB channels for each ROI image; 
+layers = NaN(CC.ImageSize(1),CC.ImageSize(2),3);
 
-%colormap.
+%construct (alpha-blended) colormap.
+ALPHA = 0.5;
 M = hsv(CC.NumObjects);
+M = rgb2hsv(M);
+M(:,2) = ALPHA * M(:,2);%just rescale saturation
+M = hsv2rgb(M);
 if shuffle
     M = M(randperm(size(M,1)),:);
 end
-M = [1 1 1;M];%[1 1 1] is for the white background
+M = [NaN NaN NaN;M];%[NaN NaN NaN] will be replaced by [1 1 1] 
+%later on and is for the white background, all other colours are
+%alpha-blended
 
 for i = 1:length(selection)
     if fillColumnFlag
@@ -97,8 +102,7 @@ for i = 1:length(selection)
         %overlapping ROI information is kept in Li
         Li = background;
         Li(sub2ind(CC.ImageSize,r,c)) = selection(i) + 1;
-        alphaData = (Li > 1);
-        layers = cat(4,layers,cat(3,ind2rgb(Li,M),alphaData));
+        layers = cat(4,layers,ind2rgb(Li,M));
         clear Li
     else
         %overlapping ROI information is overwritten in Lall
@@ -106,9 +110,7 @@ for i = 1:length(selection)
         %overlapping ROI information is kept in Li
         Li = background;
         Li(CC.PixelIdxList{selection(i)}) = selection(i) + 1;
-        %mask all background values:
-        alphaData = (Li > 1);
-        layers = cat(4,layers,cat(3,ind2rgb(Li,M),alphaData));
+        layers = cat(4,layers,ind2rgb(Li,M));
         clear Li;
     end
 end
@@ -116,15 +118,22 @@ end
 %without alpha blending:
 %image(Lall);colormap(M);
 
-%with alpha blending:
+%composite alpha blended image:
+transparentROIs = nanmean(layers,4);%nanmean guarantees that we only take
+%into account non-background pixels
+transparentROIs(isnan(transparentROIs)) = 1;%now we assign the background
+%to become white
+image(transparentROIs);
 
-%the following code would be faster if one would calculate the composite
-%image and then call image() only once.
-a = 0.5;%use the same alpha value for all layers
-for l=1:size(layers,4);
-    hold on;
-    image(layers(:,:,1:3,l),'AlphaData',a*layers(:,:,4,l));
-end
+% %with alpha blending via matlab (expensive and impractical for GUI):
+% 
+% %the following code would be faster if one would calculate the composite
+% %image and then call image() only once.
+% a = 0.5;%use the same alpha value for all layers
+% for l=1:size(layers,4);
+%     hold on;
+%     image(layers(:,:,1:3,l),'AlphaData',a*layers(:,:,4,l));
+% end
 
 %title('ROIs');xlabel('sensor columns');ylabel('sensor rows');
 axis square;
@@ -135,5 +144,6 @@ xlim([min(c),max(c)]);
 %colorbar;
 
 end
+
 
 
