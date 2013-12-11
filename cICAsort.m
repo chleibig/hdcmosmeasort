@@ -52,7 +52,7 @@ params.plotting =  0;
 params.interactive = 0;
 
 %Tissue specs:
-params.neuron_rho = 1200; %in mm�?�²
+params.neuron_rho = 2029; %in mm�?�² only used if params.ica.estimate = 'none'
 if params.interactive
     params.neuron_rho = input(['Please specify the expected neuron '...
                                ' density in mm�?�²: ']);
@@ -60,10 +60,10 @@ end
     
 %ROI segmentation:
 params.roi.method = 'cog';
-params.roi.maxSensorsPerEvent = 100;
+params.roi.maxSensorsPerEvent = 70;
 params.roi.minNoEvents = 1 * ... %multiplying factor in Spikes / second
     (params.frameStartTimes(end) - params.frameStartTimes(1))/1000;
-params.roi.mergeThr = 1.1;
+params.roi.mergeThr = 0.9;
 if d_sensor_col == 2 && d_sensor_row == 1
     params.roi.thr_factor = 10.95;
     params.roi.n_rows = 5;
@@ -91,7 +91,9 @@ params.ica.allchannels = false; %if true, all channels are used
 %to be used (overwritten, if allchannels is true) gets assigned after
 %roi identification
 params.ica.nonlinearity = 'pow3';
-params.ica.estimate = false;
+%Methods for estimating the number of ICs:
+%{'none','svdSpectrum','eigSpectrum','icaDeflation'}
+params.ica.estimate = 'eigSpectrum'; 
 params.ica.cpn  = 1; %components per neuron for later use to calculate
 %params.ica.numOfIC (overwritten, if params.estimate is true)
 params.ica.per_var = 1; %keep that many dimensions such that per_var of the
@@ -139,7 +141,7 @@ params.min_no_peaks = 1 * ... %multiplying factor in Spikes / second
 params.min_skewness = 0.05;
 
 %Peak identification.
-params.thrFactor = 5;
+params.thrFactor = 3;
 %Upsampling factor used for spike time identification
 params.upsample = 10;
 
@@ -149,8 +151,8 @@ params.maxRSTD = 0.5;
 %duplicates:
 params.t_s = 0.5; %ms
 params.t_jitter = 1; %ms
-params.coin_thr = 0.85; %fraction of coincident spikes
-params.sim_thr = 0.85; %similarity of average waveforms
+params.coin_thr = 0.6; %fraction of coincident spikes
+params.sim_thr = 0.6; %similarity of average waveforms
 
 params.sign_lev = 0.05; %for automatic threshold adaptation;
 

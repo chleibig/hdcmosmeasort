@@ -39,7 +39,7 @@ if params.allframes; params.frames = true(size(X,2),1); end
 
 if params.allchannels; params.channels = true(size(X,1),1); end
 
-if params.estimate
+if strcmp(params.estimate,'icaDeflation')
     %estimate params.numOfIC
     t1 = clock;
     fprintf('Estimating number of instantaneous components...\n');
@@ -54,6 +54,10 @@ if params.estimate
     fprintf('...done in %g seconds.\n',etime(t2,t1));
 end
 
+if strcmp(params.estimate,'svdSpectrum')
+    s = svd(X(params.channels, params.frames));
+    params.numOfIC = estimatenumberofneurons(s);
+end
 
 %compute spectral decomposition of covariance matrix separately and keep
 %only that many dimensions such that params.per_var of the variance
@@ -71,6 +75,10 @@ nEig = eigs_to_keep(end);
 pcaE = pcaE(:,ind(1:nEig));
 pcaD = pcaD(ind(1:nEig),ind(1:nEig));
 fprintf('%g out of %g eigenvectors are kept.\n',nEig,nnz(params.channels));
+
+if strcmp(params.estimate,'eigSpectrum')
+   params.numOfIC = estimatenumberofneurons(d); 
+end
 
 %fastica using pca results
 fprintf('Trying to extract %g independent components.\n',params.numOfIC);
