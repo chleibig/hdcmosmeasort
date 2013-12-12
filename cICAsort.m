@@ -61,9 +61,10 @@ end
 %ROI segmentation:
 params.roi.method = 'cog';
 params.roi.maxSensorsPerEvent = 70;
+params.roi.maxSensorsPerROI = 100;
 params.roi.minNoEvents = 1 * ... %multiplying factor in Spikes / second
     (params.frameStartTimes(end) - params.frameStartTimes(1))/1000;
-params.roi.mergeThr = 0.9;
+params.roi.mergeThr = 0.5;
 if d_sensor_col == 2 && d_sensor_row == 1
     params.roi.thr_factor = 10.95;
     params.roi.n_rows = 5;

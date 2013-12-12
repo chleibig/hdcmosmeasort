@@ -1,6 +1,6 @@
 function [ROI, varargout] = ...
-    CoG_ROIs(filename_events,maxSensorsPerEvent,minAct,N_ROWS, N_COLS, fillColumnFlag,...
-    mergeThr)
+    CoG_ROIsExp(filename_events,maxSensorsPerEvent,minAct,N_ROWS, N_COLS, fillColumnFlag,...
+    mergeThr,maxSensorsPerROI)
 %[ROI, varargout] = CoG_ROIs(filename_events,maxSensorsPerEvent,minAct,N_ROWS, N_COLS,
 %fillColumnFlag, mergeThr)
 %calculates regions of interest based on the connected components 
@@ -137,37 +137,80 @@ end
 
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-% Merge regions of interest based on overlap fraction
+% Merge regions of interest with agglomerative hierarchical clustering
+% constraining the cluster size. The overlap between regions of interest
+% is used as similarity measure.
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 
-%The following function is espensive ! :
-[ OL ] = roioverlap( ROI.PixelIdxList );
 
-%adjacencyMatrix:
-A = OL >= mergeThr;
-
-clear OL
-
-%New ROIs are the connected components of that graph, take code from:
-%http://www.mathworks.com/matlabcentral/fileexchange/
-%42040-find-network-components
 oldROI = ROI;
 ROI.PixelIdxList = {};
 ROI.time = {};
-[ROI.NumObjects,sizes,members,unused] = networkComponents(A);
+ROI.NumObjects = 0;
 
-%merge sensors and time stamps for merge cases.
-for i = 1:ROI.NumObjects
-    if sizes(i) == 1
-        ROI.PixelIdxList{i} = oldROI.PixelIdxList{members{i}};
-        ROI.time{i} = oldROI.time{members{i}};
+
+
+%%%%% Perform agglomerative hierarchical clustering %%%%%%%%%%%%%%%%%%%%%%%
+%%%%% constraining region of interest sizes %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+t1 = clock;
+fprintf('Agglomerating %g initial ROIs...\n',oldROI.NumObjects);
+
+%Initialization.
+seedPixels = oldROI.PixelIdxList(1);
+seedTimes = oldROI.time(1);
+restPixels = oldROI.PixelIdxList(2:end);
+restTimes = oldROI.time(2:end);
+%sort rest according to overlap
+[ol, idx] = sort(roioverlap(seedPixels,restPixels),'descend');
+restPixels = restPixels(idx);
+restTimes = restTimes(idx);
+
+while ~isempty(restPixels)
+
+    mergedPixels = {unique(vertcat(seedPixels{1},restPixels{1}))};
+
+    if (ol(1) >= mergeThr) && (length(mergedPixels{1}) <= maxSensorsPerROI)
+        %%%%% merge %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+        seedPixels = mergedPixels;
+        seedTimes = {unique(vertcat(seedTimes{1},restTimes{1}))};
+        %%%%% updates %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+        restPixels(1) = [];
+        restTimes(1) = [];
+        [ol, idx] = sort(roioverlap(seedPixels,restPixels),'descend');
+        restPixels = restPixels(idx);
+        restTimes = restTimes(idx);
+
     else
-        ROI.PixelIdxList{i} = unique(vertcat(oldROI.PixelIdxList{members{i}}));
-        ROI.time{i} = unique(vertcat(oldROI.time{members{i}}));
+        %%%%% do not merge / create new region of interest %%%%%%%%%%%%%%%%
+        ROI.PixelIdxList(end+1) = seedPixels;
+        ROI.time(end+1) = seedTimes;
+        ROI.NumObjects = ROI.NumObjects + 1;
+        %%%%% updates %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+        seedPixels = restPixels(1);
+        seedTimes = restTimes(1);
+        restPixels(1) = [];
+        restTimes(1) = [];
+        [ol, idx] = sort(roioverlap(seedPixels,restPixels),'descend');
+        restPixels = restPixels(idx);
+        restTimes = restTimes(idx);
     end
+
 end
-    
+
+if ~isempty(seedPixels)
+    %%%%% catch remaining sensors and store them away %%%%%%%%%%%%%%%%%%%%%
+    ROI.PixelIdxList(end+1) = seedPixels;
+    ROI.time(end+1) = seedTimes;
+    ROI.NumObjects = ROI.NumObjects + 1;
+end
+
+t2 = clock;
+fprintf('Initial ROIs merged into %g final ones in ...%g seconds.\n',...
+         ROI.NumObjects,etime(t2,t1));
+
 clear oldROI
+
+
 
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%

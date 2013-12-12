@@ -26,7 +26,8 @@ function [ROIs, OL, ROIsAsCC] = roisegmentation(data, metaData, paramsRoi, show)
 %                       as a ROI seed
 %       *.horizon - see under 'tce'
 %       *.mergeThr - if overlap between ROIs is at least as big they get
-%                    merged
+%                    merged, but only, if
+%       *.maxSensorsPerROI is not exceeded
 %
 % show - flag to control graphical output
 %
@@ -63,7 +64,7 @@ switch paramsRoi.method
         ROIsAsCC = [];
     case 'cog'
         [ROIsAsCC] = CoG_ROIs(metaData.filename_events,paramsRoi.maxSensorsPerEvent,paramsRoi.minNoEvents,...
-            max(metaData.sensor_rows), max(metaData.sensor_cols),0,paramsRoi.mergeThr);
+            max(metaData.sensor_rows), max(metaData.sensor_cols),0,paramsRoi.mergeThr,paramsRoi.maxSensorsPerROI);
         %collect output
         T_mask_global = false(length(metaData.frameStartTimes),1);
         for i = 1:ROIsAsCC.NumObjects
