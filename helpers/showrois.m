@@ -70,7 +70,7 @@ end
 
 %Initialize images
 background = ones(CC.ImageSize);%white background
-Lall = background;%overlay all in one without transparency
+Lall = zeros(CC.ImageSize);%overlay all in one without transparency
 %Stack all ROI images on top of each other into the array layers 
 %using 3 RGB channels for each ROI image; 
 layers = NaN(CC.ImageSize(1),CC.ImageSize(2),3);
