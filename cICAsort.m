@@ -38,6 +38,10 @@ params.sensor_rho = 1000000/(params.d_row * params.d_col); %per mm²
 
 data = dataset.X;
 
+if strcmp(dataset.chipType,'NCA')
+    data = 1000 * data; %conversion to mV scale
+end
+
 clear dataset
 
 
@@ -60,9 +64,9 @@ end
     
 %ROI segmentation:
 params.roi.method = 'cog';
-params.roi.maxSensorsPerEvent = 70;
-params.roi.maxSensorsPerROI = 100;
-params.roi.minNoEvents = 1 * ... %multiplying factor in Spikes / second
+params.roi.maxSensorsPerEvent = 100;
+params.roi.maxSensorsPerROI = 128;
+params.roi.minNoEvents = 3 * ... %multiplying factor in Spikes / second
     (params.frameStartTimes(end) - params.frameStartTimes(1))/1000;
 params.roi.mergeThr = 0.5;
 if d_sensor_col == 2 && d_sensor_row == 1
@@ -101,7 +105,7 @@ params.ica.per_var = 1; %keep that many dimensions such that per_var of the
 %total variance gets explained
 params.ica.approach = 'symm';
 params.ica.verbose = 'off';
-params.ica.renorm = true; %if true renormalize W and S such that only noise
+params.ica.renorm = false; %if true renormalize W and S such that only noise
                        %instead of all signal is of unit variance
 
 %convolutive ICA:
@@ -142,9 +146,9 @@ params.min_no_peaks = 1 * ... %multiplying factor in Spikes / second
 params.min_skewness = 0.05;
 
 %Peak identification.
-params.thrFactor = 3;
+params.thrFactor = 5;
 %Upsampling factor used for spike time identification
-params.upsample = 10;
+params.upsample = 4;
 
 %mixture units:
 params.maxRSTD = 0.5;
@@ -207,6 +211,7 @@ if nrOfROIs >= feature('numCores')
 else
     N_SESSIONS = nrOfROIs - 1;%-1 due to master process
 end
+
 
 if N_SESSIONS > 0
     

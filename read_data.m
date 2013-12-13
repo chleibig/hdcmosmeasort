@@ -45,9 +45,12 @@ switch fileVersion
         data.frameStartTimes = dataset.Metadata.FrameStartTimes; %in ms
         chipType = h5attget(filename,'/Metadata','ChipType');
         chipType = chipType{1};
+        data.chipType = chipType;
         switch chipType
             case 'G1183'
                 data.sensorPitch = 7.4;
+            case 'NCA'
+                data.sensorPitch = 16.0;
             otherwise
                 error(strcat('Pitch of ',chipType,' is unknown'));
         end
