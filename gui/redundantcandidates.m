@@ -80,6 +80,11 @@ else
     for j = 1:numSpatialCCs
         %skip units marked as 'to be deleted', i.e. with state == 4
         nbrs{j} = nbrs{j}([units(nbrs{j}).state] < 4);
+        if length(nbrs{j}) < 2
+            fprintf(['Spatial component %g contains less than two valid units,\n'...
+                'no need to chech redundancy, moving on to next one.\n'],j);
+            continue;
+        end
         if any([units(nbrs{j}).state] == 1) % 1 <-> 'unchecked'
             %duplicate test is only worth to do if thresholds of participating
             %units are verified
@@ -87,7 +92,7 @@ else
                 char(39) 'to be saved' char(39) ' or '...
                 char(39) 'to be deleted' char(39) ' first: '...
                 num2str(nbrs{j}([units(nbrs{j}).state] == 1))]);
-            return
+            return;
         end
         %Compute STAs on set of participating ROIs within each connected
         %component.

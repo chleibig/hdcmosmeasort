@@ -22,7 +22,7 @@ function varargout = splitmerge(varargin)
 
 % Edit the above text to modify the response to help splitmerge
 
-% Last Modified by GUIDE v2.5 11-Oct-2013 12:26:21
+% Last Modified by GUIDE v2.5 13-Dec-2013 13:41:29
 
 % Begin initialization code - DO NOT EDIT
 gui_Singleton = 0;
@@ -68,7 +68,6 @@ end
 % {'unchecked', 'threshold ok', 'to be saved', 'to be deleted'} <-> 
 handles.stateColor = {[0 0 1],[0 1 1],[0 1 0],[1 0 0]}; 
 
-
 %Set labels in listbox1 accordingly.
 set(handles.listbox1, 'String', ...
     cellfun(@num2str,num2cell(1:size(handles.S,1)),'UniformOutput',false));
@@ -83,6 +82,7 @@ set(handles.editSimThr,'String',num2str(handles.params.sim_thr));
 drawrois(hObject,handles);
 handles.unitIDsAsStrings = ...
     arrayfun(@num2str,1:length(handles.units),'UniformOutput',false);
+handles.unitIDsAsStringsSorted = handles.unitIDsAsStrings;
 guidata(hObject,handles);
 drawunitlabels(hObject,handles);
 % UIWAIT makes splitmerge wait for user response (see UIRESUME)
@@ -166,9 +166,9 @@ function listbox1_Callback(hObject, eventdata, handles)
 % Hints: contents = get(hObject,'String') returns listbox1 contents as cell array
 %        contents{get(hObject,'Value')} returns selected item from listbox1
 
-popup_sel_index = get(handles.listbox1, 'Value');
+currentUnit = str2double(handles.unitIDsAsStrings{get(handles.listbox1,'Value')});
 
-selectcomponent(hObject, eventdata, handles, popup_sel_index);
+selectcomponent(hObject, eventdata, handles, currentUnit);
 
 %--------------------------------------------------------------------------
 
@@ -187,19 +187,19 @@ function thresholdslider_Callback(hObject, eventdata, handles)
 % Hints: get(hObject,'Value') returns position of slider
 %        get(hObject,'Min') and get(hObject,'Max') to determine range of slider
 
-popup_sel_index = get(handles.listbox1,'Value');
+currentUnit = str2double(handles.unitIDsAsStrings{get(handles.listbox1,'Value')});
 
 %set threshold.
 handles.threshold = get(hObject, 'Value');
 
 % update unit
-updateunitdata(hObject, handles, popup_sel_index,...
+updateunitdata(hObject, handles, currentUnit,...
                                         handles.threshold);
 % update handles structure
 handles = guidata(hObject);
 
 % update plots
-updateunitplots(hObject, handles, popup_sel_index, handles.threshold);
+updateunitplots(hObject, handles, currentUnit, handles.threshold);
 % -------------------------------------------------------------------------
 
 
@@ -218,12 +218,12 @@ function listboxUnitState_Callback(hObject, eventdata, handles)
 % Hints: contents = get(hObject,'String') returns listboxUnitState contents as cell array
 %        contents{get(hObject,'Value')} returns selected item from listboxUnitState
 
-popup_sel_index = get(handles.listbox1,'Value');
-handles.units(popup_sel_index).state = get(hObject,'Value');
+currentUnit = str2double(handles.unitIDsAsStrings{get(handles.listbox1,'Value')});
+handles.units(currentUnit).state = get(hObject,'Value');
 
 guidata(hObject,handles);
 
-updateunitstatevisualizations(hObject, handles, popup_sel_index);
+updateunitstatevisualizations(hObject, handles, currentUnit);
 
 %draw spatial positions of units
 axes(handles.axes4);
@@ -231,6 +231,53 @@ if isfield(handles,'unitLabels')
     delete(handles.unitLabels(ishandle(handles.unitLabels)));
 end
 drawunitlabels(hObject, handles);
+% -------------------------------------------------------------------------
+
+
+
+% --- Executes on selection change in listboxSortCriteria.-----------------
+function listboxSortCriteria_Callback(hObject, eventdata, handles)
+% hObject    handle to listboxSortCriteria (see GCBO)
+% eventdata  reserved - to be defined in a future version of MATLAB
+% handles    structure with handles and user data (see GUIDATA)
+
+% Hints: contents = get(hObject,'String') returns listboxSortCriteria contents as cell array
+%        contents{get(hObject,'Value')} returns selected item from
+%        listboxSortCriteria
+
+% The sorting is encoded in handles.unitIDsAsStrings -> whenever a unit
+% is selected via the unit listbox make sure to use the string value as
+% an identifier and not the position in the list.
+
+popup_sel_index = get(handles.listboxSortCriteria,'Value');
+switch handles.sortCriteria{popup_sel_index}
+    case 'index'
+        handles.unitIDsAsStrings = handles.unitIDsAsStringsSorted;
+        set(handles.listbox1,'String',handles.unitIDsAsStrings);
+        
+    case 'separability'
+        %reset index order first:
+        handles.unitIDsAsStrings = handles.unitIDsAsStringsSorted;
+      
+        [unused,idx] = sort([handles.units.separability],'descend');
+        handles.unitIDsAsStrings = handles.unitIDsAsStrings(idx);
+        set(handles.listbox1,'String',handles.unitIDsAsStrings);
+               
+    case 'RSTD'
+        %reset index order first:
+        handles.unitIDsAsStrings = handles.unitIDsAsStringsSorted;
+      
+        [unused,idx] = sort([handles.units.RSTD],'ascend');
+        handles.unitIDsAsStrings = handles.unitIDsAsStrings(idx);
+        set(handles.listbox1,'String',handles.unitIDsAsStrings);
+        
+    otherwise
+end
+
+guidata(hObject, handles);
+
+% -------------------------------------------------------------------------
+
 
 
 % --- Executes on button press in pushbuttonAcceptThresholds. -------------
@@ -243,13 +290,8 @@ function pushbuttonAcceptThresholds_Callback(hObject, eventdata, handles)
 guidata(hObject,handles);
 
 %Update visualization
-popup_sel_index = get(handles.listbox1,'Value');
-updateunitstatevisualizations(hObject, handles, popup_sel_index);
-
-% -------------------------------------------------------------------------
-
-
-
+currentUnit = str2double(handles.unitIDsAsStrings{get(handles.listbox1,'Value')});
+updateunitstatevisualizations(hObject, handles, currentUnit);
 
 % -------------------------------------------------------------------------
 
@@ -261,7 +303,7 @@ function pushbuttonShowLocalRedundancy_Callback(hObject, eventdata, handles)
 % eventdata  reserved - to be defined in a future version of MATLAB
 % handles    structure with handles and user data (see GUIDATA)
 
-currentUnit = get(handles.listbox1,'Value');
+currentUnit = str2double(handles.unitIDsAsStrings{get(handles.listbox1,'Value')});
 
 redundantcandidates(handles.units, handles.ROIs, ...
                     handles.params, handles.data, currentUnit);
@@ -279,6 +321,7 @@ function pushbuttonRemoveAllRedundancy_Callback(hObject, eventdata, handles)
 [numDistinct, sizes, members] = redundantcandidates(handles.units, ...
                                handles.ROIs, handles.params, handles.data);
 
+N_deleted = 0;                           
 for i = 1:numDistinct
     if sizes(i) > 1
         %keep only the most separable one.
@@ -287,16 +330,18 @@ for i = 1:numDistinct
         fprintf('Changing state of unit(s) %g to be deleted.\n',...
             members{i}(markAsToBeDeleted));
         [handles.units(members{i}(markAsToBeDeleted)).state] = deal(4);
+        N_deleted = N_deleted + nnz(markAsToBeDeleted);
     end
 end
 
 guidata(hObject,handles);
 
-currentUnit = get(handles.listbox1,'Value');
+currentUnit = str2double(handles.unitIDsAsStrings{get(handles.listbox1,'Value')});
 updateunitstatevisualizations(hObject, handles, currentUnit);
 
 %redraw spatial positions of units to visualize removed redundancy
 drawunitlabels(hObject, handles);
+fprintf('Changed %g unit states to be deleted.\n Remove all done.\n',N_deleted);
 
 % -------------------------------------------------------------------------
 
@@ -309,8 +354,8 @@ function pushbuttonSTA_Callback(hObject, eventdata, handles)
 % eventdata  reserved - to be defined in a future version of MATLAB
 % handles    structure with handles and user data (see GUIDATA)
 
-popup_sel_index = get(handles.listbox1, 'Value');
-GetSTA(handles.data,handles.units(popup_sel_index).time,handles.params.sr,1);
+currentUnit = str2double(handles.unitIDsAsStrings{get(handles.listbox1,'Value')});
+GetSTA(handles.data,handles.units(currentUnit).time,handles.params.sr,1);
 % -------------------------------------------------------------------------
 
 
@@ -382,7 +427,7 @@ function pushbuttonRedrawSpatial_Callback(hObject, eventdata, handles)
 drawrois(hObject,handles);
 drawunitlabels(hObject, handles);
 hold(handles.axes4,'on');
-whichone = get(handles.listbox1, 'Value');
+whichone = str2double(handles.unitIDsAsStrings{get(handles.listbox1,'Value')});
 %Only generate handle for the first time
 handles.unitMarker = plot(handles.axes4,...
     handles.units(whichone).boss_col,...
@@ -414,10 +459,10 @@ function pushbuttonShowRawData_Callback(hObject, eventdata, handles)
 % hObject    handle to pushbuttonShowRawData (see GCBO)
 % eventdata  reserved - to be defined in a future version of MATLAB
 % handles    structure with handles and user data (see GUIDATA)
-popup_sel_index = get(handles.listbox1, 'Value');
+currentUnit = str2double(handles.unitIDsAsStrings{get(handles.listbox1,'Value')});
 
-sensorRow = handles.units(popup_sel_index).boss_row;
-sensorCol = handles.units(popup_sel_index).boss_col;
+sensorRow = handles.units(currentUnit).boss_row;
+sensorCol = handles.units(currentUnit).boss_col;
 dataRow = find(handles.params.sensor_rows == sensorRow);
 dataCol = find(handles.params.sensor_cols == sensorCol);
 
@@ -581,6 +626,27 @@ end
 
 
 
+% --- Executes during object creation, after setting all properties.
+function listboxSortCriteria_CreateFcn(hObject, eventdata, handles)
+% hObject    handle to listboxSortCriteria (see GCBO)
+% eventdata  reserved - to be defined in a future version of MATLAB
+% handles    empty - handles not created until after all CreateFcns called
+
+% Hint: listbox controls usually have a white background on Windows.
+%       See ISPC and COMPUTER.
+if ispc && isequal(get(hObject,'BackgroundColor'), get(0,'defaultUicontrolBackgroundColor'))
+    set(hObject,'BackgroundColor','white');
+end
+
+%sort criteria.
+handles.sortCriteria = {'index', 'separability', 'RSTD'};
+guidata(hObject, handles);
+%Set labels for unit state accordingly.
+set(hObject, 'String', handles.sortCriteria);
+
+
+
+
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 % WRAPPERS
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
@@ -627,8 +693,10 @@ dbstop if error
 for i = 1:length(handles.ROIs);
     %to be deleted <-> state '4'
     toDelete = [handles.units.k] == i & [handles.units.state] == 4;
-    handles.ROIs(i).units_del = handles.units(toDelete);
-    handles.ROIs(i).S_del = handles.S(toDelete,:);
+    if ~isfield(handles.ROIs(i),'units_del'); handles.ROIs(i).units_del = [];end
+    handles.ROIs(i).units_del = [handles.ROIs(i).units_del handles.units(toDelete)];
+    if ~isfield(handles.ROIs(i),'S_del'); handles.ROIs(i).S_del = [];end
+    handles.ROIs(i).S_del = [handles.ROIs(i).S_del;handles.S(toDelete,:)];
     %map toDelete to index range in ROI.
     toDelete = toDelete([handles.units.k] == i);
     if ~isfield(handles.ROIs(i),'A_del'); handles.ROIs(i).A_del = [];end
@@ -911,7 +979,7 @@ notDeleted = [handles.units.state] <= 3;
 %     arrayfun(@num2str,idx,'UniformOutput',false),...
 %     'Parent',handles.axes4);
 handles.unitLabels = text(cols(notDeleted), rows(notDeleted),...
-    handles.unitIDsAsStrings(notDeleted),...
+    handles.unitIDsAsStringsSorted(notDeleted),...
     'Parent',handles.axes4);
 
 guidata(hObject, handles);
