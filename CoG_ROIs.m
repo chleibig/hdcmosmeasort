@@ -1,8 +1,7 @@
-function [ROI, varargout] = ...
-    CoG_ROIsExp(filename_events,maxSensorsPerEvent,minAct,N_ROWS, N_COLS, fillColumnFlag,...
-    mergeThr,maxSensorsPerROI)
-%[ROI, varargout] = CoG_ROIs(filename_events,maxSensorsPerEvent,minAct,N_ROWS, N_COLS,
-%fillColumnFlag, mergeThr)
+function [ROI, varargout] = CoG_ROIs(filename_events,maxSensorsPerEvent,...
+    minAct,N_ROWS, N_COLS, fillColumnFlag,mergeThr,maxSensorsPerROI)
+% [ROI, varargout] = CoG_ROIs(filename_events,maxSensorsPerEvent,...
+%     minAct,N_ROWS, N_COLS, fillColumnFlag,mergeThr,maxSensorsPerROI)
 %calculates regions of interest based on the connected components 
 %of the center of gravity (CoG) sensors that exhibit at least minAct events
 %over the entire recording
@@ -18,19 +17,19 @@ function [ROI, varargout] = ...
 % fillColumnFlag: if true, skipped sensor columns get filled
 % mergeThr: regions of interest with at least mergeThr overlap fraction get
 %           merged
-% maxSensorsPerEvent
+% maxSensorsPerROI
 %
 % Output
 % ======
 %   
 %    [ROI] = CoG_ROIsCoG_ROIs(filename_events,maxSensorsPerEvent,minAct,N_ROWS, N_COLS,
-%                             fillColumnFlag, mergeThr)
+%                             fillColumnFlag, mergeThr, maxSensorsPerROI)
 %
 %            ROI: regions of interest
 %
 %    [ROI, CC, nEventsPerSensor, minNoEventExistence] = ...
 %              CoG_ROIs(filename_events,maxSensorsPerEvent,minAct,...
-%                        N_ROWS, N_COLS, fillColumnFlag, mergeThr)
+%                        N_ROWS, N_COLS, fillColumnFlag, mergeThr, maxSensorsPerROI)
 % 
 %            ROI: regions of interest
 %            CC: connected components as output from thresholded CoG image
