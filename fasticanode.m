@@ -56,7 +56,7 @@ end
 
 if strcmp(params.estimate,'svdSpectrum')
     s = svd(X(params.channels, params.frames));
-    params.numOfIC = estimatenumberofneurons(s);
+    params.numOfIC = estimatenumberofneurons(s,'median');
 end
 
 %compute spectral decomposition of covariance matrix separately and keep
