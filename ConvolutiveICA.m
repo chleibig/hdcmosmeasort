@@ -95,7 +95,7 @@ end
 iteration_no = 0;
 touched = struct('IDs',{});
 S_noise = [];A_noise = [];
-while iteration_no < max_iter
+while iteration_no <= max_iter
     iteration_no = iteration_no + 1;
     
     
@@ -263,7 +263,7 @@ while iteration_no < max_iter
 
     
     
-    if ~isempty(cluster_ids) && iteration_no < max_iter && do_cICA
+    if ~isempty(cluster_ids) && iteration_no <= max_iter && do_cICA
         fprintf('Iteration %g...\n',iteration_no);
         switch approach
             case 'cluster'
