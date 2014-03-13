@@ -51,6 +51,12 @@ function splitmerge_OpeningFcn(hObject, eventdata, handles, varargin)
 % handles    structure with handles and user data (see GUIDATA)
 % varargin   command line arguments to splitmerge (see VARARGIN)
 
+% Background colors
+bgcolor = [1 1 1];
+set(hObject, 'Color', bgcolor);
+set(findobj(hObject,'-property', 'BackgroundColor'), 'BackgroundColor', bgcolor);
+
+
 % Choose default command line output for splitmerge
 handles.output = hObject;
 
@@ -66,7 +72,9 @@ if ~isfield([handles.units],'state')
     [handles.units.state] = deal(1);
 end
 % {'unchecked', 'threshold ok', 'to be saved', 'to be deleted'} <-> 
-handles.stateColor = {[0 0 1],[0 1 1],[0 1 0],[1 0 0]}; 
+%handles.stateColor = {[0 0 1],[0 1 1],[0 1 0],[1 0 0]}; 
+handles.stateColor = {[0 0 0],[0 0 0],[0 0 0],[0 0 0]}; 
+
 
 %Set labels in listbox1 accordingly.
 set(handles.listbox1, 'String', ...
@@ -271,6 +279,29 @@ switch handles.sortCriteria{popup_sel_index}
         handles.unitIDsAsStrings = handles.unitIDsAsStrings(idx);
         set(handles.listbox1,'String',handles.unitIDsAsStrings);
         
+    case 'skewness'
+        %reset index order first:
+        handles.unitIDsAsStrings = handles.unitIDsAsStringsSorted;
+        
+        [unused,idx] = sort([abs(handles.skewn)],'descend');
+        handles.unitIDsAsStrings = handles.unitIDsAsStrings(idx);
+        set(handles.listbox1,'String',handles.unitIDsAsStrings);
+        
+    case 'kurtosis'
+        %reset index order first:
+        handles.unitIDsAsStrings = handles.unitIDsAsStringsSorted;
+
+        [unused,idx] = sort([handles.kurtosis],'descend');
+        handles.unitIDsAsStrings = handles.unitIDsAsStrings(idx);
+        set(handles.listbox1,'String',handles.unitIDsAsStrings);
+    case 'SNR'
+        %reset index order first:
+        handles.unitIDsAsStrings = handles.unitIDsAsStringsSorted;
+
+        [unused,idx] = sort([handles.units.snr],'descend');
+        handles.unitIDsAsStrings = handles.unitIDsAsStrings(idx);
+        set(handles.listbox1,'String',handles.unitIDsAsStrings);
+
     otherwise
 end
 
@@ -305,8 +336,22 @@ function pushbuttonShowLocalRedundancy_Callback(hObject, eventdata, handles)
 
 currentUnit = str2double(handles.unitIDsAsStrings{get(handles.listbox1,'Value')});
 
-redundantcandidates(handles.units, handles.ROIs, ...
-                    handles.params, handles.data, currentUnit);
+[numDistinct, sizes, members] = ...
+                       redundantcandidates(handles.units, handles.ROIs, ...
+                                handles.params, handles.data, currentUnit);
+fprintf(['With current threshold %g different underlying units\n'],numDistinct);
+figure;
+for i = 1:numDistinct
+   subplot(numDistinct,1,i);plot(handles.S(members{i},:)');
+   legend(...
+       arrayfun(@(x) ...
+       [num2str(x) ' sep. = ' num2str(handles.units(x).separability,2)], ...
+       members{i},'UniformOutput',false)...
+       )
+end
+suplabel('samples','x');
+suplabel('source activation','y');
+
 % -------------------------------------------------------------------------
 
 
@@ -639,7 +684,7 @@ if ispc && isequal(get(hObject,'BackgroundColor'), get(0,'defaultUicontrolBackgr
 end
 
 %sort criteria.
-handles.sortCriteria = {'index', 'separability', 'RSTD'};
+handles.sortCriteria = {'index', 'separability', 'RSTD','skewness','kurtosis','SNR'};
 guidata(hObject, handles);
 %Set labels for unit state accordingly.
 set(hObject, 'String', handles.sortCriteria);
@@ -660,9 +705,12 @@ handles.ROIs = ROIs;
 handles.ROIsAsCC = evalin('base','ROIsAsCC');
 handles.params = evalin('base','params');
 handles.data = evalin('base','data');
+
 %all sources.
 S = cat(1,ROIs.S);
 handles.S = S;
+handles.skewn = skewness(S');
+handles.kurtosis = kurtosis(S');
 clear S
 %all units.
 units = [];
@@ -735,7 +783,8 @@ N_SAMPLES = length(S);
 % indices = round(handles.units(whichone).time * ...
 %     sr * upsample);
 % noise_std = median(abs(S)/0.6745);
-noise_std = std(S);
+%noise_std = std(S);
+noise_std = unit.noise_std;
 %thrF;actor = handles.params.thrFactor;
 thrFactor = handles.params.thrFactor;
 handles.threshold = -thrFactor*noise_std;
@@ -773,7 +822,10 @@ handles.sPlot = plot(handles.axes1,S,'Color',...
 
 title(handles.axes1, strcat('amplSD = ',num2str(unit.amplitudeSD),...
       '; RSTD = ', num2str(unit.RSTD),'; sep. = ',...
-      num2str(unit.separability)));
+      num2str(unit.separability),...
+      '; skewn. = ', num2str(handles.skewn(whichone)),...
+      '; kurt. = ', num2str(handles.kurtosis(whichone))));%,...
+      %'; SNR = ', num2str(unit.snr)));
 
 %all threshold crossings.
 plot(handles.axes1, indices, S(indices),'ro','LineStyle','none');
@@ -797,7 +849,7 @@ if ~isempty(amplitudes)
     %axes(handles.axes3);
     cla(handles.axes3,'reset');
     hold(handles.axes3,'on');
-    bar(handles.axes3, bin_ctrs,cts); 
+    bar(handles.axes3, bin_ctrs,cts,'k'); 
     handles.axes3thr = plot(handles.axes3,...
                             [handles.threshold handles.threshold],...
                             get(handles.axes3,'ylim'),'r');
@@ -849,12 +901,14 @@ handles.units(whichone).RSTD = ...
                             handles.units(whichone).amplitudeSD/...
                        mean(abs(handles.units(whichone).amplitude));
 if nnz(~valid) > 0
-handles.units(whichone).separability = ...
+handles.units(whichone).separability = (...
     mean(abs(handles.units(whichone).amplitude)) - ...
-    mean(abs(handles.amplitudes(~valid)));
+    mean(abs(handles.amplitudes(~valid))) ) /...
+    handles.units(whichone).noise_std;
 else
     handles.units(whichone).separability = ...
-    mean(abs(handles.units(whichone).amplitude));
+    mean(abs(handles.units(whichone).amplitude)) / ...
+    handles.units(whichone).noise_std;
 end
     
 handles.units(whichone).SDscore = [];
@@ -869,10 +923,16 @@ handles.units(whichone).STA = GetSTA(dataTmp,handles.time(valid),...
                             handles.params.sr,0);
 clear dataTmp
 % unit position.
-[row_max,col_max] = find(max(abs(handles.units(whichone).STA),[],3)...
-    == max(max(max(abs(handles.units(whichone).STA)))));
-handles.units(whichone).boss_row = handles.ROIs(k).sensor_rows(row_max);
-handles.units(whichone).boss_col = handles.ROIs(k).sensor_cols(col_max);
+extrSTA = max(max(max(abs(handles.units(whichone).STA))));
+[row_max,col_max] = find(max(abs(handles.units(whichone).STA),[],3) == extrSTA);
+boss_row = handles.ROIs(k).sensor_rows(row_max);
+boss_col = handles.ROIs(k).sensor_cols(col_max);
+handles.units(whichone).boss_row = boss_row;
+handles.units(whichone).boss_col = boss_col;
+%handles.units(whichone).snr = extrSTA/...
+%                            handles.params.sigma(...
+%                            handles.params.sensor_rows == boss_row,...
+%                            handles.params.sensor_cols == boss_col);
 clear k
 % update guidata
 guidata(hObject,handles);
@@ -904,7 +964,7 @@ if isfield(handles,'axes2pks');
     delete(handles.axes2pks(ishandle(handles.axes2pks)));
 end
 handles.axes2pks = plot(handles.axes2,...
-                        handles.pks(:,valid),'Color','green');
+                        handles.pks(:,valid),'Color','black');
 if isfield(handles,'axes2thr');
     delete(handles.axes2thr(ishandle(handles.axes2thr)));
 end
@@ -958,7 +1018,8 @@ function drawrois(hObject,handles)
 
 axes(handles.axes4);
 showrois(handles.ROIsAsCC,...
-    'fillColumnFlag',logical(handles.params.d_col/handles.params.pitch-1));
+    'fillColumnFlag',logical(handles.params.d_col/handles.params.pitch-1),...
+    'shuffle',1);
 
 %--------------------------------------------------------------------------
 

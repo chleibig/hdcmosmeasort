@@ -25,8 +25,9 @@ for i=1:N_comp;
     end
     %Skewness is assumed to be corrected previously such that spikes
     %are negative deflections.
+    noise_std = median(abs(X(i,:))/0.6745);
     [indices,pos_amplitudes] = find_peaks(-X(i,:),...
-                                    5*median(abs(X(i,:))/0.6745),ceil(sr));
+                                    5*noise_std,ceil(sr));
     amplitudes = -1*pos_amplitudes;
     
     if ~isempty(amplitudes)
@@ -68,13 +69,16 @@ for i=1:N_comp;
             fprintf('Threshold of component %g adapted!\n',i);
             units(i).time = indices_adap/sr;
             units(i).amplitude = X(i,indices_adap);
+            units(i).noise_std = noise_std;
         else
             units(i).time = indices/sr;
             units(i).amplitude = X(i,indices);
+            units(i).noise_std = noise_std;
         end
     else
         units(i).time = [];
         units(i).amplitude = [];
+        units(i).noise_std = noise_std;
     end
 end
 

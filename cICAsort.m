@@ -5,8 +5,9 @@ function [ ROIs, params, ROIsAsCC, data ] = cICAsort(filename, filenameEvents)
 
 % created by Christian Leibig 12.02.13
 
-
 diary logfile_cICAsort.txt
+
+memory
 
 params = struct();
 
@@ -65,10 +66,10 @@ end
 %ROI segmentation:
 params.roi.method = 'cog';
 params.roi.maxSensorsPerEvent = 100;
-params.roi.maxSensorsPerROI = 128;
+params.roi.maxSensorsPerROI = 100;
 params.roi.minNoEvents = 3 * ... %multiplying factor in Spikes / second
     (params.frameStartTimes(end) - params.frameStartTimes(1))/1000;
-params.roi.mergeThr = 0.5;
+params.roi.mergeThr = 0.1;
 if d_sensor_col == 2 && d_sensor_row == 1
     params.roi.thr_factor = 10.95;
     params.roi.n_rows = 5;
@@ -118,9 +119,9 @@ end
 
 if params.do_cICA
     
-    if (round(sr) <= 12) && (round(sr) >= 11)
+    if (round(params.sr) <= 12) && (round(params.sr) >= 11)
         params.L = 7; params.M = 0;
-    elseif (round(sr) <= 24) && (round(sr) >= 23)
+    elseif (round(params.sr) <= 24) && (round(params.sr) >= 23)
         params.L = 8;params.M = 12;
     else
         params.L = input('Please specify L: ');
@@ -137,18 +138,18 @@ params.d_max = 35; %maximal distance in \mum for extrema of filters
 params.min_corr = 0.1;
 params.grouping = 'cluster';
 params.max_cluster_size = 4;
-params.max_iter = 10;
+params.max_iter = 1;
 params.maxlags = params.L;
 
 %Noise components.
-params.min_no_peaks = 1 * ... %multiplying factor in Spikes / second
+params.min_no_peaks = 3 * ... %multiplying factor in Spikes / second
     (params.frameStartTimes(end) - params.frameStartTimes(1))/1000;
 params.min_skewness = 0.05;
 
 %Peak identification.
 params.thrFactor = 5;
 %Upsampling factor used for spike time identification
-params.upsample = 4;
+params.upsample = floor(100/params.sr);
 
 %mixture units:
 params.maxRSTD = 0.5;

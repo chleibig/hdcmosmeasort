@@ -163,10 +163,11 @@ for k = 1:length(units)
     units(k).A_tau = A_tau(:,k,:);
     %Consider to calculate STAs only based on "non-coincident" spikes!
     units(k).STA = GetSTA(data_tmp, units(k).time, params.sr, 0);
-    [row_max,col_max] = find(max(abs(units(k).STA),[],3)...
-        == max(max(max(abs(units(k).STA)))));
+    extrSTA = max(max(max(abs(units(k).STA))));
+    [row_max,col_max] = find(max(abs(units(k).STA),[],3) == extrSTA);
     units(k).boss_row = sensor_rows_roi(row_max);
     units(k).boss_col = sensor_cols_roi(col_max);
+    units(k).snr = extrSTA/median(abs(data_tmp(row_max,col_max,:))/0.6745);
 end
 clear data_tmp
 

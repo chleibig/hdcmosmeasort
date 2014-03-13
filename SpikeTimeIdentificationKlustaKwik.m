@@ -147,16 +147,16 @@ for i=1:dims;
         units(i).RSTD = units(i).amplitudeSD/meanAmpWinner;
         
         if N_CLU > 1
-            units(i).separability = meanAmpWinner - ...
-                mean(abs(amplitudes(KluRes.dataClass == k_nearest)));
+            units(i).separability = ( meanAmpWinner - ...
+                mean(abs(amplitudes(KluRes.dataClass == k_nearest))) )/noise_std;
         else
-            units(i).separability = meanAmpWinner; %corresponds to average
+            units(i).separability = meanAmpWinner/noise_std; %corresponds to average
             %signal to noise ratio (noise is assumed to have unit variance)
         end
         
         units(i).time = indices(KluRes.dataClass == k_winner)/(sr*upsample);
         units(i).amplitude = x(indices(KluRes.dataClass==k_winner));
-        
+        units(i).noise_std = noise_std;
         
         
         if show
@@ -197,7 +197,7 @@ for i=1:dims;
     else
         units(i).time = [];
         units(i).amplitude = [];
-        
+        units(i).noise_std = noise_std;
     end
     
 end
