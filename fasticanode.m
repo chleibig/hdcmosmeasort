@@ -56,7 +56,7 @@ end
 
 if strcmp(params.estimate,'svdSpectrum')
     s = svd(X(params.channels, params.frames));
-    params.numOfIC = estimatenumberofneurons(s,'median');
+    params.numOfIC = estimatenumberofneurons(s,'median',nnz(params.frames));
 end
 
 %compute spectral decomposition of covariance matrix separately and keep
@@ -77,7 +77,7 @@ pcaD = pcaD(ind(1:nEig),ind(1:nEig));
 fprintf('%g out of %g eigenvectors are kept.\n',nEig,nnz(params.channels));
 
 if strcmp(params.estimate,'eigSpectrum')
-   params.numOfIC = estimatenumberofneurons(d); 
+   params.numOfIC = estimatenumberofneurons(d,'median',nnz(params.frames)); 
 end
 
 %fastica using pca results

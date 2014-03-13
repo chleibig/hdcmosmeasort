@@ -1,4 +1,4 @@
-function N = estimatenumberofneurons(spectrum,approach)
+function N = estimatenumberofneurons(spectrum,approach,T)
 % N = estimatenumberofneurons(spectrum) thresholds
 % spectrum (either singular values of data matrix
 % or eigenvalues of data covariance matrix).
@@ -26,8 +26,27 @@ switch approach
         [P,S] = polyfit(round(N_DIM/2):N_DIM,spectrum(round(N_DIM/2):N_DIM),1);
         [Y] = polyval(P,1:N_DIM,S);
         N = find(spectrum < (Y+3*S.normr),1);
+    case 'mean'
+        N = find(spectrum <= mean(spectrum),1);
+    case 'AIC'
+        n = length(spectrum);
+        rho = arrayfun(@(m) (prod(spectrum(m+1:n).^(1/(n-m)))/(sum(spectrum(m+1:n))/(n-m))), 1:n);
+        AIC = arrayfun(@(m) (-2*T*(n-m)*log(rho(m))+2*m*(2*n-m)),1:n);
+        [unused,N] = min(AIC);
+%         figure;plotyy(1:n,spectrum,1:n,AIC);
+%         title(['minimum at ' num2str(N)]);
+        
+    case 'MDL'
+        n = length(spectrum);
+        rho = arrayfun(@(m) (prod(spectrum(m+1:n).^(1/(n-m)))/(sum(spectrum(m+1:n))/(n-m))), 1:n);
+        MDL = arrayfun(@(m) (-T*(n-m)*log(rho(m))+0.5*m*(2*n-m)*log(T)),1:n);
+        [unused,N] = min(MDL);
+%         figure;plotyy(1:n,spectrum,1:n,MDL);
+%         title(['minimum at ' num2str(N)]);
     otherwise
         error('Please specify a valid estimation mode!')
 end
+
+fprintf(['%g neurons estimated with ' approach '\n'],N);
 
 end
