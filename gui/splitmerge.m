@@ -720,6 +720,12 @@ for i = 1:length(ROIs);
         units = [units ROIs(i).units];
     end
 end
+if ~isfield(units,'noise_std')
+    for i = 1:length(units)
+        noise_std = median(abs(handles.S(i,:))/0.6745);
+        units(i).noise_std = noise_std;
+    end
+end
 handles.units = units;
 clear units
 %Update guidata

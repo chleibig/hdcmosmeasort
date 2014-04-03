@@ -66,7 +66,7 @@ end
 %ROI segmentation:
 params.roi.method = 'cog';
 params.roi.maxSensorsPerEvent = 100;
-params.roi.maxSensorsPerROI = 100;
+params.roi.maxSensorsPerROI = 90;
 params.roi.minNoEvents = 3 * ... %multiplying factor in Spikes / second
     (params.frameStartTimes(end) - params.frameStartTimes(1))/1000;
 params.roi.mergeThr = 0.1;
@@ -147,7 +147,7 @@ params.min_no_peaks = 3 * ... %multiplying factor in Spikes / second
 params.min_skewness = 0.05;
 
 %Peak identification.
-params.thrFactor = 5;
+params.thrFactor = 3;
 %Upsampling factor used for spike time identification
 params.upsample = floor(100/params.sr);
 
@@ -157,8 +157,8 @@ params.maxRSTD = 0.5;
 %duplicates:
 params.t_s = 0.5; %ms
 params.t_jitter = 1; %ms
-params.coin_thr = 0.6; %fraction of coincident spikes
-params.sim_thr = 0.6; %similarity of average waveforms
+params.coin_thr = 0.3; %fraction of coincident spikes
+params.sim_thr = 0.5; %similarity of average waveforms
 
 params.sign_lev = 0.05; %for automatic threshold adaptation;
 
