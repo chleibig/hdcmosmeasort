@@ -1,4 +1,4 @@
-function [ ROIs, params, ROIsAsCC, data ] = cICAsort(filename, filenameEvents)
+function [ ROIs, params, ROIsAsCC ] = HDCMOSMEAsort(filename, filenameEvents)
 %[ ROIs, params, ROIsAsCC ] = cICAsort(filename, filenameEvents)
 %cICAsort perform spike sorting of high density array data
 %based on (convolutive) ICA
@@ -15,18 +15,22 @@ params = struct();
 % Load data
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 
-[dataset] = read_data(filename);
+%[dataset] = read_data(filename);
+metadata = read_metadata(filename);
+
+dummyData = []; %refactor: remove data from parameter list of roisegmentation
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 % Data and array specs
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 
 params.filename = filename;
-params.sensor_rows = dataset.sensorRows;
-params.sensor_cols = dataset.sensorCols;
-params.sr = dataset.sr;
-params.frameStartTimes = dataset.frameStartTimes;
-params.pitch = dataset.sensorPitch; %in µm
+params.sensor_rows = metadata.sensorRows;
+params.sensor_cols = metadata.sensorCols;
+params.sr = metadata.sr;
+params.frameStartTimes = metadata.frameStartTimes;
+params.pitch = metadata.sensorPitch; %in µm
+params.chipType = metadata.chipType;
 
 %delta sensor coord.
 d_sensor_row = double(params.sensor_rows(2) - params.sensor_rows(1));
@@ -35,15 +39,16 @@ d_sensor_col = double(params.sensor_cols(2) - params.sensor_cols(1));
 params.d_row = d_sensor_row * params.pitch;
 params.d_col = d_sensor_col * params.pitch;
 
+
 params.sensor_rho = 1000000/(params.d_row * params.d_col); %per mm²
 
-data = dataset.X;
-
-if strcmp(dataset.chipType,'NCA')
-    data = 1000 * data; %conversion to mV scale
-end
-
-clear dataset
+% data = dataset.X;
+% 
+% if strcmp(dataset.chipType,'NCA')
+%     data = 1000 * data; %conversion to mV scale
+% end
+% 
+% clear dataset
 
 
 
@@ -66,10 +71,10 @@ end
 %ROI segmentation:
 params.roi.method = 'cog';
 params.roi.maxSensorsPerEvent = 100;
-params.roi.maxSensorsPerROI = 90;
+params.roi.maxSensorsPerROI = 400;
 params.roi.minNoEvents = 3 * ... %multiplying factor in Spikes / second
     (params.frameStartTimes(end) - params.frameStartTimes(1))/1000;
-params.roi.mergeThr = 0.1;
+params.roi.mergeThr = 0.8;
 if d_sensor_col == 2 && d_sensor_row == 1
     params.roi.thr_factor = 10.95;
     params.roi.n_rows = 5;
@@ -147,7 +152,7 @@ params.min_no_peaks = 3 * ... %multiplying factor in Spikes / second
 params.min_skewness = 0.05;
 
 %Peak identification.
-params.thrFactor = 3;
+params.thrFactor = 5;
 %Upsampling factor used for spike time identification
 params.upsample = floor(100/params.sr);
 
@@ -195,7 +200,7 @@ metaData.filename_events = filenameEvents;
 
 fprintf('\nConstructing regions of interest...\n');
 t1 = clock;
-[ROIs, OL, ROIsAsCC] = roisegmentation(data, metaData, params.roi, params.plotting);
+[ROIs, OL, ROIsAsCC] = roisegmentation(dummyData, metaData, params.roi, params.plotting);
 t2 = clock;
 fprintf('...prepared %g ROIs in %g seconds\n',length(ROIs),etime(t2,t1));
 
