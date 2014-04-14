@@ -21,9 +21,32 @@ function [ ROI ] = processroi( ROI, params )
   
 fprintf('\nWorking on ROI %g...\n\n',ROI.k);
 
-X = ROI.X;
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+% Load box shaped data block that contains region of interest
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+
 sensor_rows_roi = ROI.sensor_rows;
 sensor_cols_roi = ROI.sensor_cols;
+      
+firstRow = find(params.sensor_rows == sensor_rows_roi(1));
+lastRow = find(params.sensor_rows == sensor_rows_roi(end));
+firstCol = find(params.sensor_cols == sensor_cols_roi(1));
+lastCol = find(params.sensor_cols == sensor_cols_roi(end));
+firstFrame = 1;
+lastFrame = length(params.frameStartTimes);
+
+X = readDataBlock(params.filename,...
+                    firstRow,lastRow,firstCol,lastCol,firstFrame,lastFrame);
+X = reshape(X,[size(X,1)*size(X,2) size(X,3)]);
+
+if strcmp(params.chipType,'NCA')
+  X = 1000 * X; %conversion to mV scale
+end
+            
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+
+%masks to index into the data block
 T_mask = ROI.T_mask;
 N_mask = ROI.N_mask;
 
