@@ -22,7 +22,7 @@ function varargout = splitmerge(varargin)
 
 % Edit the above text to modify the response to help splitmerge
 
-% Last Modified by GUIDE v2.5 15-Apr-2014 13:45:07
+% Last Modified by GUIDE v2.5 15-Apr-2014 14:46:26
 
 % Begin initialization code - DO NOT EDIT
 gui_Singleton = 0;
@@ -309,10 +309,14 @@ switch handles.sortCriteria{popup_sel_index}
         unitIDsAsColoredStrings = unitIDsAsColoredStrings(idx);
         
     case 'SNR'
-        [unused,idx] = sort([handles.units.snr],'descend');
-        handles.unitIDsAsStrings = handles.unitIDsAsStrings(idx);
-        unitIDsAsColoredStrings = unitIDsAsColoredStrings(idx);
-
+        try
+            [unused,idx] = sort([handles.units.snr],'descend');
+            handles.unitIDsAsStrings = handles.unitIDsAsStrings(idx);
+            unitIDsAsColoredStrings = unitIDsAsColoredStrings(idx);
+        catch
+            msgbox('SNR is not available. Sort by index instead.')
+        end
+        
     otherwise
 end
 
@@ -563,6 +567,53 @@ end
 % xlabel('samples');
 
 % -------------------------------------------------------------------------
+
+
+
+% --- Executes on button press in pushbuttonFeatureHist.
+function pushbuttonFeatureHist_Callback(hObject, eventdata, handles)
+% hObject    handle to pushbuttonFeatureHist (see GCBO)
+% eventdata  reserved - to be defined in a future version of MATLAB
+% handles    structure with handles and user data (see GUIDATA)
+
+selected = get(handles.listboxSortCriteria, 'Value');
+feature = handles.sortCriteria{selected};
+
+N_UNITS = length(handles.units);
+
+switch feature
+    case 'index'
+         msgbox('This would result in a flat distribution;)')
+    case 'separability'
+        figure;hist([handles.units.separability],sqrt(N_UNITS));
+        xlabel(feature);ylabel('counts');
+        set(findall(gcf,'type','text'),'fontSize',12);
+        
+    case 'RSTD'
+        figure;hist([handles.units.RSTD],sqrt(N_UNITS));
+        xlabel(feature);ylabel('counts');
+        set(findall(gcf,'type','text'),'fontSize',12);
+         
+    case 'skewness'
+        figure;hist([handles.skewn],sqrt(length(handles.skewn)));
+        xlabel(feature);ylabel('counts');
+        set(findall(gcf,'type','text'),'fontSize',12);
+         
+    case 'kurtosis'
+        figure;hist([handles.kurtosis],sqrt(length(handles.kurtosis)));
+        xlabel(feature);ylabel('counts');
+        set(findall(gcf,'type','text'),'fontSize',12);
+        
+    case 'SNR'
+        msgbox('SNR is not a selective feature!')
+
+    otherwise
+end
+
+
+
+%--------------------------------------------------------------------------
+
 
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
@@ -1137,9 +1188,5 @@ bgColoredString = ['<html><DIV bgcolor="' color '"><pre>' string ...
                    '                                 </pre></DIV></html>'];
 
 %--------------------------------------------------------------------------
-
-
-
-
 
 
