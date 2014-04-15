@@ -90,6 +90,16 @@ handles.unitIDsAsStrings = ...
 handles.unitIDsAsStringsSorted = handles.unitIDsAsStrings;
 guidata(hObject,handles);
 drawunitlabels(hObject,handles);
+
+
+%set background colors by state in unit list
+bgColors = handles.stateColor([handles.units.state]);
+unitIDsAsColoredStrings = arrayfun(@(x) ...
+                    setbgcolor(bgColors{x},handles.unitIDsAsStrings{x}),...
+                                 1:length(bgColors),'UniformOutput',false);
+clear bgColors
+set(handles.listbox1,'String',unitIDsAsColoredStrings);
+
 % UIWAIT makes splitmerge wait for user response (see UIRESUME)
 % uiwait(handles.figure1);
 %--------------------------------------------------------------------------
@@ -223,13 +233,23 @@ function listboxUnitState_Callback(hObject, eventdata, handles)
 % Hints: contents = get(hObject,'String') returns listboxUnitState contents as cell array
 %        contents{get(hObject,'Value')} returns selected item from listboxUnitState
 
+newState = get(hObject,'Value');
+
 unitListIdx = get(handles.listbox1,'Value');
 currentUnit = str2double(handles.unitIDsAsStrings{unitListIdx});
-handles.units(currentUnit).state = get(hObject,'Value');
 
+
+currentUnitNewBgColorAsString = setbgcolor(handles.stateColor{newState},...
+                                           num2str(currentUnit));
+tmp = get(handles.listbox1,'String');
+tmp{unitListIdx} = currentUnitNewBgColorAsString;
+set(handles.listbox1,'String',tmp);
+clear tmp
+
+handles.units(currentUnit).state = newState;
 guidata(hObject,handles);
 
-updateunitstatevisualizations(hObject, handles, currentUnit);
+updateunitstatefractions(hObject, handles, currentUnit);
 
 %draw spatial positions of units
 axes(handles.axes4);
@@ -316,7 +336,15 @@ guidata(hObject,handles);
 
 %Update visualization
 currentUnit = str2double(handles.unitIDsAsStrings{get(handles.listbox1,'Value')});
-updateunitstatevisualizations(hObject, handles, currentUnit);
+updateunitstatefractions(hObject, handles, currentUnit);
+%update background colors in unit list
+bgColors = handles.stateColor([handles.units.state]);
+unitIDsAsColoredStrings = arrayfun(@(x) ...
+                    setbgcolor(bgColors{x},handles.unitIDsAsStrings{x}),...
+                                 1:length(bgColors),'UniformOutput',false);
+clear bgColors
+set(handles.listbox1,'String',unitIDsAsColoredStrings);
+
 
 % -------------------------------------------------------------------------
 
@@ -376,7 +404,14 @@ end
 guidata(hObject,handles);
 
 currentUnit = str2double(handles.unitIDsAsStrings{get(handles.listbox1,'Value')});
-updateunitstatevisualizations(hObject, handles, currentUnit);
+updateunitstatefractions(hObject, handles, currentUnit);
+%update background colors in unit list
+bgColors = handles.stateColor([handles.units.state]);
+unitIDsAsColoredStrings = arrayfun(@(x) ...
+                    setbgcolor(bgColors{x},handles.unitIDsAsStrings{x}),...
+                                 1:length(bgColors),'UniformOutput',false);
+clear bgColors
+set(handles.listbox1,'String',unitIDsAsColoredStrings);
 
 %redraw spatial positions of units to visualize removed redundancy
 drawunitlabels(hObject, handles);
@@ -1067,7 +1102,7 @@ guidata(hObject, handles);
 
 
 %--------------------------------------------------------------------------
-function updateunitstatevisualizations(hObject, handles, currentUnit)
+function updateunitstatefractions(hObject, handles, currentUnit)
 
 %state color Source activation plot
 % set(handles.sPlot,...
