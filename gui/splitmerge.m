@@ -22,7 +22,7 @@ function varargout = splitmerge(varargin)
 
 % Edit the above text to modify the response to help splitmerge
 
-% Last Modified by GUIDE v2.5 13-Dec-2013 13:41:29
+% Last Modified by GUIDE v2.5 15-Apr-2014 13:45:07
 
 % Begin initialization code - DO NOT EDIT
 gui_Singleton = 0;
@@ -159,7 +159,7 @@ delete(handles.figure1)
 
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-% Choice of IC component 
+% Choice of Source component 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 
 % --- Executes on selection change in listbox1-----------------------------
@@ -183,7 +183,7 @@ selectcomponent(hObject, eventdata, handles, currentUnit);
 % Amplitude adjustment
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 
-% --- Executes on slider movement and on IC selection
+% --- Executes on slider movement and on Source selection
 function thresholdslider_Callback(hObject, eventdata, handles)
 % hObject    handle to thresholdslider (see GCBO)
 % eventdata  reserved - to be defined in a future version of MATLAB
@@ -211,7 +211,7 @@ updateunitplots(hObject, handles, currentUnit, handles.threshold);
 
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-% Unit/IC state
+% Unit/Source state
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 
 % --- Executes on selection change in listboxUnitState.----------------------------
@@ -364,12 +364,12 @@ N_deleted = 0;
 for i = 1:numDistinct
     if sizes(i) > 1
         %keep only the most separable one.
-        markAsToBeDeleted = ([handles.units(members{i}).separability] ~= ...
+        markAsDelete = ([handles.units(members{i}).separability] ~= ...
                             max([handles.units(members{i}).separability]));
         fprintf('Changing state of unit(s) %g to delete.\n',...
-            members{i}(markAsToBeDeleted));
-        [handles.units(members{i}(markAsToBeDeleted)).state] = deal(4);
-        N_deleted = N_deleted + nnz(markAsToBeDeleted);
+            members{i}(markAsDelete));
+        [handles.units(members{i}(markAsDelete)).state] = deal(4);
+        N_deleted = N_deleted + nnz(markAsDelete);
     end
 end
 
@@ -624,22 +624,22 @@ end
 
 
 % --- Executes during object creation, after setting all properties.
-function textFractionToBeSaved_CreateFcn(hObject, eventdata, handles)
-% hObject    handle to textFractionToBeSaved (see GCBO)
+function textFractionSingle_CreateFcn(hObject, eventdata, handles)
+% hObject    handle to textFractionSingle (see GCBO)
 % eventdata  reserved - to be defined in a future version of MATLAB
 % handles    empty - handles not created until after all CreateFcns called
 
 
 % --- Executes during object creation, after setting all properties.
-function textFractionToBeDeleted_CreateFcn(hObject, eventdata, handles)
-% hObject    handle to textFractionToBeDeleted (see GCBO)
+function textFractionDelete_CreateFcn(hObject, eventdata, handles)
+% hObject    handle to textFractionDelete (see GCBO)
 % eventdata  reserved - to be defined in a future version of MATLAB
 % handles    empty - handles not created until after all CreateFcns called
 
 
 % --- Executes during object creation, after setting all properties.
-function textFractionThresholdOk_CreateFcn(hObject, eventdata, handles)
-% hObject    handle to textFractionThresholdOk (see GCBO)
+function textFractionMixture_CreateFcn(hObject, eventdata, handles)
+% hObject    handle to textFractionMixture (see GCBO)
 % eventdata  reserved - to be defined in a future version of MATLAB
 % handles    empty - handles not created until after all CreateFcns called
 
@@ -825,7 +825,7 @@ end
 
 %Plotting
 
-%entire IC.
+%entire Source.
 %axes(handles.axes1);
 cla(handles.axes1,'reset');
 hold(handles.axes1,'on');
@@ -849,7 +849,7 @@ handles.axes1thr = plot(handles.axes1, ...
 %                       unit.amplitude,'go','LineStyle','none');
 
 if ~isempty(amplitudes)
-    %IC waveforms.
+    %Source waveforms.
     %axes(handles.axes2);
     cla(handles.axes2,'reset');
     %Setup axes.
@@ -1069,22 +1069,22 @@ guidata(hObject, handles);
 %--------------------------------------------------------------------------
 function updateunitstatevisualizations(hObject, handles, currentUnit)
 
-%state color IC activation plot
+%state color Source activation plot
 % set(handles.sPlot,...
 %    'Color',handles.stateColor{handles.units(currentUnit).state});
 
-%fraction of IC / unit states
+%fraction of Source / unit states
 N_units = length(handles.units);
 fractionUnchecked = 100*nnz([handles.units.state] == 1)/N_units;
-fractionThresholdOk = 100*(nnz([handles.units.state] == 2) + ... 
+fractionMixture = 100*(nnz([handles.units.state] == 2) + ... 
                            nnz([handles.units.state] == 3) + ...
                            nnz([handles.units.state] == 4))/N_units;
-fractionToBeSaved = 100*nnz([handles.units.state] == 3)/N_units;
-fractionToBeDeleted = 100*nnz([handles.units.state] == 4)/N_units;
+fractionSingle = 100*nnz([handles.units.state] == 3)/N_units;
+fractionDelete = 100*nnz([handles.units.state] == 4)/N_units;
 set(handles.textFractionUnchecked,'String',num2str(fractionUnchecked,'%3.1f'));
-set(handles.textFractionThresholdOk,'String',num2str(fractionThresholdOk,'%3.1f'));
-set(handles.textFractionToBeSaved,'String',num2str(fractionToBeSaved,'%3.1f'));
-set(handles.textFractionToBeDeleted,'String',num2str(fractionToBeDeleted,'%3.1f'));
+set(handles.textFractionMixture,'String',num2str(fractionMixture,'%3.1f'));
+set(handles.textFractionSingle,'String',num2str(fractionSingle,'%3.1f'));
+set(handles.textFractionDelete,'String',num2str(fractionDelete,'%3.1f'));
 
 %state of currently selected unit
 set(handles.listboxUnitState,'Value',handles.units(currentUnit).state);
