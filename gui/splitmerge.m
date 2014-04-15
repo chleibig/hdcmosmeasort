@@ -67,13 +67,10 @@ dataimport(hObject, handles);
 handles = guidata(hObject);
 
 %Set initially all unit states to unchecked.
-%1 - unchecked, 2 - threshold ok, 3 - to be saved, % 4 - to be deleted
+%1 - unchecked, 2 - mixture, 3 - single, % 4 - delete
 if ~isfield([handles.units],'state')
     [handles.units.state] = deal(1);
 end
-% {'unchecked', 'threshold ok', 'to be saved', 'to be deleted'} <-> 
-%handles.stateColor = {[0 0 1],[0 1 1],[0 1 0],[1 0 0]}; 
-handles.stateColor = {[0 0 0],[0 0 0],[0 0 0],[0 0 0]}; 
 
 
 %Set labels in listbox1 accordingly.
@@ -226,7 +223,8 @@ function listboxUnitState_Callback(hObject, eventdata, handles)
 % Hints: contents = get(hObject,'String') returns listboxUnitState contents as cell array
 %        contents{get(hObject,'Value')} returns selected item from listboxUnitState
 
-currentUnit = str2double(handles.unitIDsAsStrings{get(handles.listbox1,'Value')});
+unitListIdx = get(handles.listbox1,'Value');
+currentUnit = str2double(handles.unitIDsAsStrings{unitListIdx});
 handles.units(currentUnit).state = get(hObject,'Value');
 
 guidata(hObject,handles);
@@ -257,53 +255,49 @@ function listboxSortCriteria_Callback(hObject, eventdata, handles)
 % is selected via the unit listbox make sure to use the string value as
 % an identifier and not the position in the list.
 
+%reset index to default order first
+handles.unitIDsAsStrings = handles.unitIDsAsStringsSorted;
+%color backgrounds according to unit states
+bgColors = handles.stateColor([handles.units.state]);
+unitIDsAsColoredStrings = arrayfun(@(x) ...
+                    setbgcolor(bgColors{x},handles.unitIDsAsStrings{x}),...
+                                 1:length(bgColors),'UniformOutput',false);
+clear bgColors
+
 popup_sel_index = get(handles.listboxSortCriteria,'Value');
 switch handles.sortCriteria{popup_sel_index}
     case 'index'
-        handles.unitIDsAsStrings = handles.unitIDsAsStringsSorted;
-        set(handles.listbox1,'String',handles.unitIDsAsStrings);
-        
+         
     case 'separability'
-        %reset index order first:
-        handles.unitIDsAsStrings = handles.unitIDsAsStringsSorted;
-      
         [unused,idx] = sort([handles.units.separability],'descend');
         handles.unitIDsAsStrings = handles.unitIDsAsStrings(idx);
-        set(handles.listbox1,'String',handles.unitIDsAsStrings);
-               
+        unitIDsAsColoredStrings = unitIDsAsColoredStrings(idx);
+                
     case 'RSTD'
-        %reset index order first:
-        handles.unitIDsAsStrings = handles.unitIDsAsStringsSorted;
-      
         [unused,idx] = sort([handles.units.RSTD],'ascend');
         handles.unitIDsAsStrings = handles.unitIDsAsStrings(idx);
-        set(handles.listbox1,'String',handles.unitIDsAsStrings);
-        
+        unitIDsAsColoredStrings = unitIDsAsColoredStrings(idx);
+         
     case 'skewness'
-        %reset index order first:
-        handles.unitIDsAsStrings = handles.unitIDsAsStringsSorted;
-        
         [unused,idx] = sort([abs(handles.skewn)],'descend');
         handles.unitIDsAsStrings = handles.unitIDsAsStrings(idx);
-        set(handles.listbox1,'String',handles.unitIDsAsStrings);
-        
+        unitIDsAsColoredStrings = unitIDsAsColoredStrings(idx);
+         
     case 'kurtosis'
-        %reset index order first:
-        handles.unitIDsAsStrings = handles.unitIDsAsStringsSorted;
-
         [unused,idx] = sort([handles.kurtosis],'descend');
         handles.unitIDsAsStrings = handles.unitIDsAsStrings(idx);
-        set(handles.listbox1,'String',handles.unitIDsAsStrings);
+        unitIDsAsColoredStrings = unitIDsAsColoredStrings(idx);
+        
     case 'SNR'
-        %reset index order first:
-        handles.unitIDsAsStrings = handles.unitIDsAsStringsSorted;
-
         [unused,idx] = sort([handles.units.snr],'descend');
         handles.unitIDsAsStrings = handles.unitIDsAsStrings(idx);
-        set(handles.listbox1,'String',handles.unitIDsAsStrings);
+        unitIDsAsColoredStrings = unitIDsAsColoredStrings(idx);
 
     otherwise
 end
+
+set(handles.listbox1,'String',unitIDsAsColoredStrings);
+clear unitIDsAsColoredStrings
 
 guidata(hObject, handles);
 
@@ -372,7 +366,7 @@ for i = 1:numDistinct
         %keep only the most separable one.
         markAsToBeDeleted = ([handles.units(members{i}).separability] ~= ...
                             max([handles.units(members{i}).separability]));
-        fprintf('Changing state of unit(s) %g to be deleted.\n',...
+        fprintf('Changing state of unit(s) %g to delete.\n',...
             members{i}(markAsToBeDeleted));
         [handles.units(members{i}(markAsToBeDeleted)).state] = deal(4);
         N_deleted = N_deleted + nnz(markAsToBeDeleted);
@@ -386,7 +380,7 @@ updateunitstatevisualizations(hObject, handles, currentUnit);
 
 %redraw spatial positions of units to visualize removed redundancy
 drawunitlabels(hObject, handles);
-fprintf('Changed %g unit states to be deleted.\n Remove all done.\n',N_deleted);
+fprintf('Changed %g unit states to delete.\n Remove all done.\n',N_deleted);
 
 % -------------------------------------------------------------------------
 
@@ -573,8 +567,15 @@ if ispc && isequal(get(hObject,'BackgroundColor'), get(0,'defaultUicontrolBackgr
     set(hObject,'BackgroundColor','white');
 end
 
-%Set labels for unit state accordingly.
-set(hObject, 'String', {'unchecked', 'threshold ok', 'to be saved', 'to be deleted'});
+% {'unchecked', 'mixture', 'single', 'delete'} <-> 
+%handles.stateColor = {[0 0 1],[0 1 1],[0 1 0],[1 0 0]}; 
+handles.stateColor = {'white','aqua','lime','red'}; 
+guidata(hObject, handles);
+stateLabels = {'unchecked', 'mixture', 'single', 'delete'};
+stateLabelsColored = arrayfun(@(x) ...
+                    setbgcolor(handles.stateColor{x},stateLabels{x}),...
+                                 1:length(stateLabels),'UniformOutput',false);
+set(hObject, 'String', stateLabelsColored);
 % -------------------------------------------------------------------------
 
 
@@ -750,7 +751,7 @@ function dataexport(hObject, eventdata, handles)
 dbstop if error
 
 for i = 1:length(handles.ROIs);
-    %to be deleted <-> state '4'
+    %delete <-> state '4'
     toDelete = [handles.units.k] == i & [handles.units.state] == 4;
     if ~isfield(handles.ROIs(i),'units_del'); handles.ROIs(i).units_del = [];end
     handles.ROIs(i).units_del = [handles.ROIs(i).units_del handles.units(toDelete)];
@@ -762,7 +763,7 @@ for i = 1:length(handles.ROIs);
     handles.ROIs(i).A_del = cat(2,handles.ROIs(i).A_del,...
                                 handles.ROIs(i).A_tau(:,toDelete,:));    
     clear toDelete
-    %to be saved <-> state '3'
+    %single <-> state '3'
     toSave = [handles.units.k] == i & [handles.units.state] <= 3;
     handles.ROIs(i).units = handles.units(toSave);
     handles.ROIs(i).S = handles.S(toSave,:);
@@ -828,8 +829,9 @@ end
 %axes(handles.axes1);
 cla(handles.axes1,'reset');
 hold(handles.axes1,'on');
-handles.sPlot = plot(handles.axes1,S,'Color',...
-                     handles.stateColor{unit.state});
+%handles.sPlot = plot(handles.axes1,S,'Color',...
+%                     handles.stateColor{unit.state});
+handles.sPlot = plot(handles.axes1,S,'Color',[0 0 0]);
 
 title(handles.axes1, strcat('amplSD = ',num2str(unit.amplitudeSD),...
       '; RSTD = ', num2str(unit.RSTD),'; sep. = ',...
@@ -1068,8 +1070,8 @@ guidata(hObject, handles);
 function updateunitstatevisualizations(hObject, handles, currentUnit)
 
 %state color IC activation plot
-set(handles.sPlot,...
-    'Color',handles.stateColor{handles.units(currentUnit).state});
+% set(handles.sPlot,...
+%    'Color',handles.stateColor{handles.units(currentUnit).state});
 
 %fraction of IC / unit states
 N_units = length(handles.units);
@@ -1090,6 +1092,16 @@ set(handles.listboxUnitState,'Value',handles.units(currentUnit).state);
 guidata(hObject, handles);
 %--------------------------------------------------------------------------
 
+
+
+
+%--------------------------------------------------------------------------
+function bgColoredString = setbgcolor(color,string)
+%bgColoredString = setbgcolor(color,string)
+bgColoredString = ['<html><DIV bgcolor="' color '"><pre>' string ...
+                   '                                 </pre></DIV></html>'];
+
+%--------------------------------------------------------------------------
 
 
 
