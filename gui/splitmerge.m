@@ -22,7 +22,7 @@ function varargout = splitmerge(varargin)
 
 % Edit the above text to modify the response to help splitmerge
 
-% Last Modified by GUIDE v2.5 15-Apr-2014 14:46:26
+% Last Modified by GUIDE v2.5 15-Apr-2014 16:28:08
 
 % Begin initialization code - DO NOT EDIT
 gui_Singleton = 0;
@@ -410,12 +410,7 @@ guidata(hObject,handles);
 currentUnit = str2double(handles.unitIDsAsStrings{get(handles.listbox1,'Value')});
 updateunitstatefractions(hObject, handles, currentUnit);
 %update background colors in unit list
-bgColors = handles.stateColor([handles.units.state]);
-unitIDsAsColoredStrings = arrayfun(@(x) ...
-                    setbgcolor(bgColors{x},handles.unitIDsAsStrings{x}),...
-                                 1:length(bgColors),'UniformOutput',false);
-clear bgColors
-set(handles.listbox1,'String',unitIDsAsColoredStrings);
+listboxSortCriteria_Callback(hObject, eventdata, handles);
 
 %redraw spatial positions of units to visualize removed redundancy
 drawunitlabels(hObject, handles);
@@ -494,6 +489,44 @@ handles.params.sim_thr = simThr;
 guidata(hObject, handles);
 % -------------------------------------------------------------------------
 
+
+
+function editMin_Callback(hObject, eventdata, handles)
+% hObject    handle to editMin (see GCBO)
+% eventdata  reserved - to be defined in a future version of MATLAB
+% handles    structure with handles and user data (see GUIDATA)
+
+% Hints: get(hObject,'String') returns contents of editMin as text
+%        str2double(get(hObject,'String')) returns contents of editMin as a double
+
+featMin = str2double(get(hObject,'String'));
+if isnan(featMin)
+    errordlg('Entered value must be numeric!','Bad Input','modal');
+    return
+end
+handles.featMin = featMin;
+guidata(hObject, handles);
+%--------------------------------------------------------------------------
+
+
+
+function editMax_Callback(hObject, eventdata, handles)
+% hObject    handle to editMax (see GCBO)
+% eventdata  reserved - to be defined in a future version of MATLAB
+% handles    structure with handles and user data (see GUIDATA)
+
+% Hints: get(hObject,'String') returns contents of editMax as text
+%        str2double(get(hObject,'String')) returns contents of editMax as a
+%        double
+
+featMax = str2double(get(hObject,'String'));
+if isnan(featMax)
+    errordlg('Entered value must be numeric!','Bad Input','modal');
+    return
+end
+handles.featMax = featMax;
+guidata(hObject, handles);
+%--------------------------------------------------------------------------
 
 
 
@@ -609,6 +642,69 @@ switch feature
 
     otherwise
 end
+%--------------------------------------------------------------------------
+
+
+
+% --- Executes on button press in pushbuttonCropUnits.
+function pushbuttonCropUnits_Callback(hObject, eventdata, handles)
+% hObject    handle to pushbuttonCropUnits (see GCBO)
+% eventdata  reserved - to be defined in a future version of MATLAB
+% handles    structure with handles and user data (see GUIDATA)
+
+
+selected = get(handles.listboxSortCriteria, 'Value');
+feature = handles.sortCriteria{selected};
+featMin = handles.featMin;
+featMax = handles.featMax;
+
+choice = questdlg(['Do you want to delete units with ' feature ...
+                  ' < ' num2str(featMin) ' or > ' num2str(featMax) '?'],...
+                  '','Continue','Cancel','Cancel');
+
+if strcmp(choice,'Cancel')
+   return
+end
+
+toDelete = false(size([handles.units.state]));
+
+switch feature
+    case 'index'
+        msgbox('This is not a good idea;)')
+    case 'separability'
+        toDelete = ( [handles.units.separability] < featMin ) | ...
+                   ( [handles.units.separability] > featMax );
+
+    case 'RSTD'
+        toDelete = ( [handles.units.RSTD] < featMin ) | ...
+                   ( [handles.units.RSTD] > featMax );
+        
+    case 'skewness'
+        toDelete = ( [handles.skewn] < featMin ) | ...
+                   ( [handles.skewn] > featMax );
+        
+    case 'kurtosis'
+        toDelete = ( [handles.kurtosis] < featMin ) | ...
+                   ( [handles.kurtosis] > featMax );
+
+    case 'SNR'
+        msgbox(['SNR is not a selective feature! ' ...
+            'No unit will be set to delete'])
+
+    otherwise
+end
+
+[handles.units(toDelete).state] = deal(4);
+guidata(hObject,handles);
+
+currentUnit = str2double(handles.unitIDsAsStrings{get(handles.listbox1,'Value')});
+updateunitstatefractions(hObject, handles, currentUnit);
+%update background colors in unit list
+listboxSortCriteria_Callback(hObject, eventdata, handles);
+
+%redraw spatial positions of units to visualize removed redundancy
+drawunitlabels(hObject, handles);
+fprintf('Changed %g unit states to delete.\n',nnz(toDelete));
 
 
 
@@ -775,6 +871,42 @@ handles.sortCriteria = {'index', 'separability', 'RSTD','skewness','kurtosis','S
 guidata(hObject, handles);
 %Set labels for unit state accordingly.
 set(hObject, 'String', handles.sortCriteria);
+
+
+
+% --- Executes during object creation, after setting all properties.
+function editMin_CreateFcn(hObject, eventdata, handles)
+% hObject    handle to editMin (see GCBO)
+% eventdata  reserved - to be defined in a future version of MATLAB
+% handles    empty - handles not created until after all CreateFcns called
+
+% Hint: edit controls usually have a white background on Windows.
+%       See ISPC and COMPUTER.
+if ispc && isequal(get(hObject,'BackgroundColor'), get(0,'defaultUicontrolBackgroundColor'))
+    set(hObject,'BackgroundColor','white');
+end
+featMin = -Inf;
+set(hObject,'String',num2str(featMin));
+handles.featMin = featMin;
+guidata(hObject, handles);
+
+
+
+% --- Executes during object creation, after setting all properties.
+function editMax_CreateFcn(hObject, eventdata, handles)
+% hObject    handle to editMax (see GCBO)
+% eventdata  reserved - to be defined in a future version of MATLAB
+% handles    empty - handles not created until after all CreateFcns called
+
+% Hint: edit controls usually have a white background on Windows.
+%       See ISPC and COMPUTER.
+if ispc && isequal(get(hObject,'BackgroundColor'), get(0,'defaultUicontrolBackgroundColor'))
+    set(hObject,'BackgroundColor','white');
+end
+featMax = +Inf;
+set(hObject,'String',num2str(featMax));
+handles.featMax = featMax;
+guidata(hObject, handles);
 
 
 
@@ -1188,5 +1320,11 @@ bgColoredString = ['<html><DIV bgcolor="' color '"><pre>' string ...
                    '                                 </pre></DIV></html>'];
 
 %--------------------------------------------------------------------------
+
+
+
+
+
+
 
 
