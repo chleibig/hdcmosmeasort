@@ -5,7 +5,7 @@ function [ ROIs, params, ROIsAsCC ] = HDCMOSMEAsort(filename, filenameEvents)
 
 % created by Christian Leibig 12.02.13
 
-diary logfile_cICAsort.txt
+diary logfile_HDCMOSMEAsort.txt
 
 memory
 
@@ -71,10 +71,10 @@ end
 %ROI segmentation:
 params.roi.method = 'cog';
 params.roi.maxSensorsPerEvent = 100;
-params.roi.maxSensorsPerROI = 400;
+params.roi.maxSensorsPerROI = 128;
 params.roi.minNoEvents = 3 * ... %multiplying factor in Spikes / second
     (params.frameStartTimes(end) - params.frameStartTimes(1))/1000;
-params.roi.mergeThr = 0.8;
+params.roi.mergeThr = 0.1;
 if d_sensor_col == 2 && d_sensor_row == 1
     params.roi.thr_factor = 10.95;
     params.roi.n_rows = 5;
@@ -139,7 +139,7 @@ end
 
 params.allframes_cica = 1;
 
-params.d_max = 35; %maximal distance in \mum for extrema of filters
+params.d_max = 21; %maximal distance in \mum for extrema of filters
 params.min_corr = 0.1;
 params.grouping = 'cluster';
 params.max_cluster_size = 4;
@@ -152,7 +152,7 @@ params.min_no_peaks = 3 * ... %multiplying factor in Spikes / second
 params.min_skewness = 0.05;
 
 %Peak identification.
-params.thrFactor = 5;
+params.thrFactor = 3;
 %Upsampling factor used for spike time identification
 params.upsample = floor(100/params.sr);
 
@@ -162,7 +162,7 @@ params.maxRSTD = 0.5;
 %duplicates:
 params.t_s = 0.5; %ms
 params.t_jitter = 1; %ms
-params.coin_thr = 0.3; %fraction of coincident spikes
+params.coin_thr = 0.5; %fraction of coincident spikes
 params.sim_thr = 0.5; %similarity of average waveforms
 
 params.sign_lev = 0.05; %for automatic threshold adaptation;
@@ -299,7 +299,7 @@ end
 %SaveResults(ROIs, params);   
     
 t_total_2 = clock;
-fprintf('Total cICAsort performed in %g seconds\n',etime(t_total_2,t_total_1));
+fprintf('Total HDCMOSMEAsort performed in %g seconds\n',etime(t_total_2,t_total_1));
 
 diary off
 
