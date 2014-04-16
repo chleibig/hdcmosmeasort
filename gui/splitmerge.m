@@ -360,11 +360,15 @@ function pushbuttonShowLocalRedundancy_Callback(hObject, eventdata, handles)
 % eventdata  reserved - to be defined in a future version of MATLAB
 % handles    structure with handles and user data (see GUIDATA)
 
+maxDist = str2double(get(handles.editDistMax,'String'));
+minCoin = str2double(get(handles.editCoinThr,'String'));
+minSim = str2double(get(handles.editSimThr,'String'));
 currentUnit = str2double(handles.unitIDsAsStrings{get(handles.listbox1,'Value')});
 
 [numDistinct, sizes, members] = ...
                        redundantcandidates(handles.units, handles.ROIs, ...
-                                handles.params, handles.data, currentUnit);
+                                handles.params, handles.data,...
+                                maxDist, minCoin, minSim, currentUnit);
 fprintf(['With current threshold %g different underlying units\n'],numDistinct);
 figure;
 for i = 1:numDistinct
@@ -388,9 +392,13 @@ function pushbuttonRemoveAllRedundancy_Callback(hObject, eventdata, handles)
 % eventdata  reserved - to be defined in a future version of MATLAB
 % handles    structure with handles and user data (see GUIDATA)
 
+maxDist = str2double(get(handles.editDistMax,'String'));
+minCoin = str2double(get(handles.editCoinThr,'String'));
+minSim = str2double(get(handles.editSimThr,'String'));
 
-[numDistinct, sizes, members] = redundantcandidates(handles.units, ...
-                               handles.ROIs, handles.params, handles.data);
+[numDistinct, sizes, members] = redundantcandidates(handles.units,...
+                             handles.ROIs, handles.params, handles.data,...
+                             maxDist, minCoin, minSim);
 
 N_deleted = 0;                           
 for i = 1:numDistinct
@@ -403,6 +411,18 @@ for i = 1:numDistinct
         [handles.units(members{i}(markAsDelete)).state] = deal(4);
         N_deleted = N_deleted + nnz(markAsDelete);
     end
+end
+
+%update params struct if threshold values were more aggressive in the sense
+%of enabling a larger fraction of units to be deleted 
+if maxDist > handles.params.d_max
+    handles.params.d_max = maxDist;
+end
+if minCoin < handles.params.coin_thr;
+    handles.params.coin_thr = minCoin;
+end
+if minSim < handles.params.sim_thr;
+    handles.params.sim_thr = minSim;
 end
 
 guidata(hObject,handles);
@@ -441,12 +461,11 @@ function editDistMax_Callback(hObject, eventdata, handles)
 % Hints: get(hObject,'String') returns contents of editDistMax as text
 %        str2double(get(hObject,'String')) returns contents of editDistMax as a double
 
-distMax = str2double(get(hObject,'String'));
-if isnan(distMax)
+maxDist = str2double(get(hObject,'String'));
+if isnan(maxDist)
     errordlg('Entered value must be numeric!','Bad Input','modal');
     return
 end
-handles.params.d_max = distMax;
 guidata(hObject, handles);
 
 % -------------------------------------------------------------------------
@@ -460,12 +479,12 @@ function editCoinThr_Callback(hObject, eventdata, handles)
 % Hints: get(hObject,'String') returns contents of editCoinThr as text
 %        str2double(get(hObject,'String')) returns contents of editCoinThr as a double
 
-coinThr = str2double(get(hObject,'String'));
-if isnan(coinThr)
+minCoin = str2double(get(hObject,'String'));
+if isnan(minCoin)
     errordlg('Entered value must be numeric!','Bad Input','modal');
     return
 end
-handles.params.coin_thr = coinThr;
+
 guidata(hObject, handles);
 % -------------------------------------------------------------------------
 
@@ -480,12 +499,12 @@ function editSimThr_Callback(hObject, eventdata, handles)
 %        str2double(get(hObject,'String')) returns contents of editSimThr
 %        as a double
 
-simThr = str2double(get(hObject,'String'));
-if isnan(simThr)
+minSim = str2double(get(hObject,'String'));
+if isnan(minSim)
     errordlg('Entered value must be numeric!','Bad Input','modal');
     return
 end
-handles.params.sim_thr = simThr;
+
 guidata(hObject, handles);
 % -------------------------------------------------------------------------
 
@@ -667,7 +686,8 @@ if strcmp(choice,'Cancel')
 end
 
 toDelete = false(size([handles.units.state]));
-
+%update params struct if threshold values were more aggressive in the sense
+%of enabling a larger fraction of units to be deleted
 switch feature
     case 'index'
         msgbox('This is not a good idea;)')

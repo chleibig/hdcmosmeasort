@@ -1,6 +1,6 @@
 function [numDistinct, sizes, members] = redundantcandidates(units, ...
-    ROIs, params, data, varargin)
-%redundantcandidates(units, ROIs, params, data, varargin)
+    ROIs, params, data, maxDist, minCoin, minSim, varargin)
+%redundantcandidates(units, ROIs, params, data, maxDist, minCoin, minSim, varargin)
 
 %Idea: compare units based on spatial neighbourhood (realised via connected
 %components on thresholded ED matrix) with each other. Within in each such
@@ -10,12 +10,16 @@ function [numDistinct, sizes, members] = redundantcandidates(units, ...
 % Input
 % =====
 %
+%  ...
+%
+%  maxDist [\mum]
+%  minCoin
+%  minSim
+%
 %  varargin{1} <-> currentUnit, if present only associated connected
 %                  is evaluated otherwise all are evaluated
 
 % christian.leibig@g-node.org, 10.10.2013
-
-maxDist = params.d_max;
 
 [ ED ] = euclideandistance([units.boss_row], [units.boss_col], params.pitch, params.pitch);
 
@@ -68,8 +72,8 @@ if ~isempty(varargin)
     %-- Check for redundancy in one spatially connected component region --
     [numDistinct, sizes, members] = ...
            checkforredundancy(units(nbrsOfCurrentUnit), params.sr, ...
-                     params.t_s, params.t_jitter, params.coin_thr,...
-                     params.sim_thr, 1, 0, 'unitIDs',nbrsOfCurrentUnit);
+                     params.t_s, params.t_jitter, minCoin,...
+                     minSim, 1, 0, 'unitIDs',nbrsOfCurrentUnit);
 
 else
     %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
@@ -118,8 +122,8 @@ else
         fprintf('Analyzing redundancy of spatial component %g ...\n',j);
         [numDistinctJ,sizesJ,membersJ] = checkforredundancy(...
                      units(nbrs{j}), params.sr, ...
-                     params.t_s, params.t_jitter, params.coin_thr,...
-                     params.sim_thr, 0, 0, 'unitIDs',nbrs{j});
+                     params.t_s, params.t_jitter, minCoin,...
+                     minSim, 0, 0, 'unitIDs',nbrs{j});
         numDistinct = numDistinct + numDistinctJ;
         sizes = [sizes sizesJ];
         members = [members membersJ];
