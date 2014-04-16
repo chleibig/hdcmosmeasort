@@ -299,7 +299,7 @@ switch handles.sortCriteria{popup_sel_index}
         unitIDsAsColoredStrings = unitIDsAsColoredStrings(idx);
          
     case 'skewness'
-        [unused,idx] = sort([abs(handles.skewn)],'descend');
+        [unused,idx] = sort(abs([handles.skewn]),'descend');
         handles.unitIDsAsStrings = handles.unitIDsAsStrings(idx);
         unitIDsAsColoredStrings = unitIDsAsColoredStrings(idx);
          
@@ -674,18 +674,31 @@ switch feature
     case 'separability'
         toDelete = ( [handles.units.separability] < featMin ) | ...
                    ( [handles.units.separability] > featMax );
+        
+        if featMin > handles.params.minSeparability
+            handles.params.minSeparability = featMin;
+        end
 
     case 'RSTD'
         toDelete = ( [handles.units.RSTD] < featMin ) | ...
                    ( [handles.units.RSTD] > featMax );
+        if featMax < handles.params.maxRSTD
+            handles.params.maxRSTD = featMax;
+        end
         
     case 'skewness'
         toDelete = ( [handles.skewn] < featMin ) | ...
                    ( [handles.skewn] > featMax );
-        
+        if featMin > handles.params.min_skewness
+            handles.params.min_skewness = featMin;
+        end
+               
     case 'kurtosis'
         toDelete = ( [handles.kurtosis] < featMin ) | ...
-                   ( [handles.kurtosis] > featMax );
+            ( [handles.kurtosis] > featMax );
+        if featMin > handles.params.minKurtosis
+            handels.params.minKurtosis = featMin;
+        end
 
     case 'SNR'
         msgbox(['SNR is not a selective feature! ' ...
@@ -695,6 +708,7 @@ switch feature
 end
 
 [handles.units(toDelete).state] = deal(4);
+
 guidata(hObject,handles);
 
 currentUnit = str2double(handles.unitIDsAsStrings{get(handles.listbox1,'Value')});
