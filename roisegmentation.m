@@ -67,12 +67,25 @@ switch paramsRoi.method
             max(metaData.sensor_rows), max(metaData.sensor_cols),0,paramsRoi.mergeThr,paramsRoi.maxSensorsPerROI);
         %collect output
         T_mask_global = false(length(metaData.frameStartTimes),1);
-        for i = 1:ROIsAsCC.NumObjects
+        i = 1;
+        while i <= ROIsAsCC.NumObjects
             %sensor row col pairs for each pixel in ROI_i:
             [sensor_rows_pxl_i,sensor_cols_pxl_i] = ...
                 ind2sub(ROIsAsCC.ImageSize,ROIsAsCC.PixelIdxList{i});
-            ROIs(i).sensor_rows = unique(sensor_rows_pxl_i);
-            ROIs(i).sensor_cols = unique(sensor_cols_pxl_i);
+            tmpRows = unique(sensor_rows_pxl_i);
+            tmpCols = unique(sensor_cols_pxl_i);
+            
+            if (length(tmpRows) == 1) || (length(tmpCols) == 1)
+                ROIsAsCC.NumObjects = ROIsAsCC.NumObjects - 1;
+                ROIsAsCC.PixelIdxList(i) = [];
+                ROIsAsCC.time(i) = [];
+                
+                i = i + 1;
+                continue;
+            end
+            
+            ROIs(i).sensor_rows = tmpRows;
+            ROIs(i).sensor_cols = tmpCols;
 %             data_ROI_i = data(...
 %                 (ROIs(i).sensor_rows(1) <= metaData.sensor_rows) & ...
 %                 (metaData.sensor_rows <= ROIs(i).sensor_rows(end)),...
@@ -101,6 +114,8 @@ switch paramsRoi.method
             ROIs(i).T_mask = false(length(metaData.frameStartTimes),1);
             ROIs(i).T_mask(frameIdx) = true;
             T_mask_global = ROIs(i).T_mask | T_mask_global;
+            
+            i = i + 1;
         end
         T_mask_global = fillvector( T_mask_global, paramsRoi.horizon);
         %Assign each ROI the same global temporal mask. Far away regions 

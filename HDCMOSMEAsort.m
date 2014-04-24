@@ -70,9 +70,9 @@ end
     
 %ROI segmentation:
 params.roi.method = 'cog';
-params.roi.maxSensorsPerEvent = 169;
-params.roi.maxSensorsPerROI = 900;
-params.roi.minNoEvents = 3 * ... %multiplying factor in Spikes / second
+params.roi.maxSensorsPerEvent = Inf;
+params.roi.maxSensorsPerROI = 300;
+params.roi.minNoEvents = 1 * ... %multiplying factor in Spikes / second
     (params.frameStartTimes(end) - params.frameStartTimes(1))/1000;
 params.roi.mergeThr = 0.1;
 if d_sensor_col == 2 && d_sensor_row == 1
@@ -147,7 +147,7 @@ params.max_iter = 1;
 params.maxlags = params.L;
 
 %Noise components.
-params.min_no_peaks = 3 * ... %multiplying factor in Spikes / second
+params.min_no_peaks = 1 * ... %multiplying factor in Spikes / second
     (params.frameStartTimes(end) - params.frameStartTimes(1))/1000;
 params.min_skewness = 0.05;
 
