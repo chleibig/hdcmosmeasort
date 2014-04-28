@@ -369,7 +369,7 @@ currentUnit = str2double(handles.unitIDsAsStrings{get(handles.listbox1,'Value')}
                        redundantcandidates(handles.units, handles.ROIs, ...
                                 handles.params, handles.data,...
                                 maxDist, minCoin, minSim, currentUnit);
-fprintf(['With current threshold %g different underlying units\n'],numDistinct);
+fprintf(['Found %g putative different underlying unit(s)\n'],numDistinct);
 figure;
 for i = 1:numDistinct
    subplot(numDistinct,1,i);plot(handles.S(members{i},:)');
@@ -692,6 +692,11 @@ switch feature
     case 'index'
         msgbox('This is not a good idea;)')
     case 'separability'
+        if ~isinf(featMax)
+            featMax = Inf;
+            msgbox(['Units with separability exceeding max. value will '...
+                    'not be deleted!']);
+        end
         toDelete = ( [handles.units.separability] < featMin ) | ...
                    ( [handles.units.separability] > featMax );
         
@@ -700,6 +705,11 @@ switch feature
         end
 
     case 'RSTD'
+        if ~isinf(-featMin)
+            featMin = -Inf;
+            msgbox(['Units with RSTD less than the min. value will '...
+                    'not be deleted!']);
+        end
         toDelete = ( [handles.units.RSTD] < featMin ) | ...
                    ( [handles.units.RSTD] > featMax );
         if featMax < handles.params.maxRSTD
@@ -707,6 +717,11 @@ switch feature
         end
         
     case 'skewness'
+        if ~isinf(featMax)
+            featMax = Inf;
+            msgbox(['Units with skewness exceeding max. value will '...
+                    'not be deleted!']);
+        end
         toDelete = ( [handles.skewn] < featMin ) | ...
                    ( [handles.skewn] > featMax );
         if featMin > handles.params.min_skewness
@@ -714,6 +729,11 @@ switch feature
         end
                
     case 'kurtosis'
+        if ~isinf(featMax)
+            featMax = Inf;
+            msgbox(['Units with kurtosis exceeding max. value will '...
+                    'not be deleted!']);
+        end
         toDelete = ( [handles.kurtosis] < featMin ) | ...
             ( [handles.kurtosis] > featMax );
         if featMin > handles.params.minKurtosis
