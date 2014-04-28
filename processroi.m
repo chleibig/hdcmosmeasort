@@ -39,10 +39,6 @@ lastFrame = length(params.frameStartTimes);
 X = readDataBlock(params.filename,...
                     firstRow,lastRow,firstCol,lastCol,firstFrame,lastFrame);
 X = reshape(X,[size(X,1)*size(X,2) size(X,3)]);
-
-if strcmp(params.chipType,'NCA')
-  X = 1000 * X; %conversion to mV scale
-end
             
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 

@@ -32,6 +32,7 @@ end
 switch fileVersion
     case 'NH5_1.0.0'
       h5PathData = '/Data';
+      chipType = h5attget(filename,'/Metadata','ChipType');
     otherwise
         error(['Fileversion ' fileVersion ' is unknown']);
 end
@@ -82,5 +83,9 @@ H5F.close(fid);
 data = permute(data, [3 2 1]);
 if ~strcmp(class(data),'double');data = double(data);end;
 
+
+if strcmp(chipType,'NCA')
+  data = 1000 * data; %conversion to mV scale
+end
 
 end
