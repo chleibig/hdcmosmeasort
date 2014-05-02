@@ -26,7 +26,7 @@ try
     fileVersion = h5attget(filename,'/Metadata','FileVersion');
     fileVersion = fileVersion{1};
 catch
-    error(['Format ' fileVersion ' of ' filename ' is unknown']);  
+    error('Fileformat unknown or file not found!');  
 end
 
 switch fileVersion
