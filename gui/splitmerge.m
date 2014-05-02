@@ -744,7 +744,7 @@ switch feature
         toDelete = ( [handles.kurtosis] < featMin ) | ...
             ( [handles.kurtosis] > featMax );
         if featMin > handles.params.minKurtosis
-            handels.params.minKurtosis = featMin;
+            handles.params.minKurtosis = featMin;
         end
 
     case 'SNR'
