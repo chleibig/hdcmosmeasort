@@ -1,6 +1,6 @@
 function [ ROIs, params, ROIsAsCC ] = HDCMOSMEAsort(filename, filenameEvents)
-%[ ROIs, params, ROIsAsCC ] = cICAsort(filename, filenameEvents)
-%cICAsort perform spike sorting of high density array data
+%[ ROIs, params, ROIsAsCC ] = HDCMOSMEAsort(filename, filenameEvents)
+%HDCMOSMEAsort performs spike sorting of high density array data
 %based on (convolutive) ICA
 
 % created by Christian Leibig 12.02.13
@@ -9,22 +9,16 @@ diary logfile_HDCMOSMEAsort.txt
 
 memory
 
-params = struct();
+params = struct(); %bundles all parameters
+params.filename = filename;
+
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-% Load data
+% Get data and array specs from metadata of hdf5 file
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 
-%[dataset] = read_data(filename);
 metadata = read_metadata(filename);
 
-dummyData = []; %refactor: remove data from parameter list of roisegmentation
-
-%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-% Data and array specs
-%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-
-params.filename = filename;
 params.sensor_rows = metadata.sensorRows;
 params.sensor_cols = metadata.sensorCols;
 params.sr = metadata.sr;
@@ -42,39 +36,16 @@ params.d_col = d_sensor_col * params.pitch;
 
 params.sensor_rho = 1000000/(params.d_row * params.d_col); %per mm²
 
-% data = dataset.X;
-% 
-% if strcmp(dataset.chipType,'NCA')
-%     data = 1000 * data; %conversion to mV scale
-% end
-% 
-% clear dataset
-
 
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 % Default arguments
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 
-
-%general:
 params.plotting =  0;
 params.interactive = 0;
 
-%Tissue specs:
-params.neuron_rho = 2029; %in mm�?�² only used if params.ica.estimate = 'none'
-if params.interactive
-    params.neuron_rho = input(['Please specify the expected neuron '...
-                               ' density in mm�?�²: ']);
-end
-    
-%ROI segmentation:
-params.roi.method = 'cog';
-params.roi.maxSensorsPerEvent = Inf;
-params.roi.maxSensorsPerROI = 300;
-params.roi.minNoEvents = 1 * ... %multiplying factor in Spikes / second
-    (params.frameStartTimes(end) - params.frameStartTimes(1))/1000;
-params.roi.mergeThr = 0.1;
+%%%%% Event detection is not planned to be done in Matlab - refactor that %
 if d_sensor_col == 2 && d_sensor_row == 1
     params.roi.thr_factor = 10.95;
     params.roi.n_rows = 5;
@@ -89,10 +60,35 @@ else
     error(strcat('Unknown readout configuration.\n',...
     'Please check parameters for ROI identification'));
 end
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+
+
+%%%%% ROI construction %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+params.roi.method = 'cog';
+params.roi.maxSensorsPerEvent = Inf;
+params.roi.minNoEvents = 1 * ... %multiplying factor in Spikes / second
+    (params.frameStartTimes(end) - params.frameStartTimes(1))/1000;
+
+params.roi.mergeThr = 0.1;
+params.roi.maxSensorsPerROI = 300;
+
 params.roi.horizon = 2*floor(params.sr);%~1 ms to the left and to the right
 %of detected activity is taken for the temporal ROI
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 
-%fastICA parameters:
+
+%%%%% Expected number of neurons %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+params.neuron_rho = 2029; %in mm�?�² only used if params.ica.estimate = 'none'
+if params.interactive
+    params.neuron_rho = input(['Please specify the expected neuron '...
+                               ' density in mm�?�²: ']);
+end
+% Upper bound for neuron number gets automatically estimated if 
+% params.ica.estimate = 'eigSpectrum'
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+
+
+%%%%% instantaneous ICA %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 params.ica.allframes = true; %if true, all frames are used
 params.ica.allchannels = false; %if true, all channels are used
 %params.ica.frames - boolean array of length T, indicating the frames to
@@ -113,8 +109,10 @@ params.ica.approach = 'symm';
 params.ica.verbose = 'off';
 params.ica.renorm = false; %if true renormalize W and S such that only noise
                        %instead of all signal is of unit variance
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 
-%convolutive ICA:
+                       
+%%%%% convolutive ICA %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 if params.interactive
     params.do_cICA = input(['Do you want to perform convolutive ICA(1)? '...
                             ' (0, otherwise)?']);
@@ -138,58 +136,52 @@ else
 end
 
 params.allframes_cica = 1;
-
-params.d_max = 21; %maximal distance in \mum for extrema of filters
 params.min_corr = 0.1;
 params.grouping = 'cluster';
 params.max_cluster_size = 4;
 params.max_iter = 1;
 params.maxlags = params.L;
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 
-%Noise components.
-params.min_no_peaks = 1 * ... %multiplying factor in Spikes / second
-    (params.frameStartTimes(end) - params.frameStartTimes(1))/1000;
-params.min_skewness = 0.05;
 
-%Peak identification.
+%%%%% Spike time identification %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 params.thrFactor = 3;
 %Upsampling factor used for spike time identification
 params.upsample = floor(100/params.sr);
+%deprecated:
+params.sign_lev = 0.05; %for automatic threshold adaptation;
+% was used previously with Hartigans dip test
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 
-%mixture units:
+
+%%%%% Automatic removal of noise sources %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+params.min_no_peaks = 1 * ... %multiplying factor in Spikes / second
+    (params.frameStartTimes(end) - params.frameStartTimes(1))/1000;
+params.min_skewness = 0.05;
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+
+
+%%%%% Automatic removal of mixture units %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 params.maxRSTD = 0.5;
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 
-%duplicates:
+
+%%%%% Fusion of results from different regions of interest %%%%%%%%%%%%%%%%
+%spike train alignment.
 params.t_s = 0.5; %ms
 params.t_jitter = 1; %ms
+%redundancy reduction parameters, adjustable in GUI.
+params.d_max = 35; %maximal distance in \mum for extrema of average waveforms
 params.coin_thr = 0.5; %fraction of coincident spikes
 params.sim_thr = 0.5; %similarity of average waveforms
-
-params.sign_lev = 0.05; %for automatic threshold adaptation;
-
-
-t_total_1 = clock;
-
-%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-% Preprocessing - bandpass
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 
 
-% tic;
-% Wp = [ 0.3  3] * 2 / params.sr;
-% Ws = [ 0.1 min(5,(params.sr/2 - 0.1))] * 2 / params.sr;
-% [N,Wn] = buttord( Wp, [.001 .999], 3, 10);
-% [B,A] = butter(N,Wn);
-% [N_ROW,N_COL,N_SAMPLES] = size(data);
-% data = reshape(data, [N_ROW*N_COL N_SAMPLES]);
-% data_filt = cell2mat(cellfun(@(x) filtfilt(B,A,x),...
-%                             num2cell(data,2),'UniformOutput',0));
-% %Due to shape expected by ROIIdentification:
-% data = squeeze(reshape(data_filt, [N_ROW N_COL N_SAMPLES]));
-% toc;
+t_total_1 = clock;% ⅰVamos!
+
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-% ROI segmentation
+% Construction of regions of interest
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 
 metaData.sensor_rows = params.sensor_rows;
@@ -200,6 +192,7 @@ metaData.filename_events = filenameEvents;
 
 fprintf('\nConstructing regions of interest...\n');
 t1 = clock;
+dummyData = []; %refactor: remove data from parameter list of roisegmentation
 [ROIs, OL, ROIsAsCC] = roisegmentation(dummyData, metaData, params.roi, params.plotting);
 t2 = clock;
 fprintf('...prepared %g ROIs in %g seconds\n',length(ROIs),etime(t2,t1));
@@ -276,27 +269,18 @@ end
 
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-% Combine results of different ROIs
+% Combine results from different ROIs
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 
-% if length(ROIs) > 1
-%     fprintf('\nCombining results of different regions of interest...\n');
-%     t1 = clock;
-%     [ROIs, N_INTER_ROI_DUPL] = combinerois(ROIs, OL, params.sr, data,...
-%         params.sensor_rows, params.sensor_cols, params.t_s, params.t_jitter,...
-%         params.coin_thr, params.sim_thr, params.plotting, params.interactive);
-%     t2 = clock;    
-%     fprintf('found %g interregional duplicates in %g seconds\n',...
-%         N_INTER_ROI_DUPL,etime(t2,t1));
-% end
-
+%start splitmerge from the command line to do that in a semiautomized
+%fashion after termination of HDCMOSMEAsort.m
 
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 % Save results
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 
-%SaveResults(ROIs, params);   
+%SaveResults(ROIs, params);   <-> save results from GUI !
     
 t_total_2 = clock;
 fprintf('Total HDCMOSMEAsort performed in %g seconds\n',etime(t_total_2,t_total_1));

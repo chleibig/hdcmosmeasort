@@ -29,7 +29,7 @@ try
     fileVersion = hdf5read(filename,'/Metadata/FileVersion');
     fileVersion = fileVersion.Data;
 catch
-    error(['Format ' fileVersion ' of ' filename ' is unknown']);  
+    error('Fileformat unknown or file not found!');  
 end
 
 switch fileVersion

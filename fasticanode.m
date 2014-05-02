@@ -68,7 +68,8 @@ t1 = clock;
 t2 = clock;
 fprintf('PCA performed in %g seconds.\n',etime(t2,t1));
 
-%reduce dimensionality
+%reduce dimensionality - consider reducing dimensionality directly to 
+%numOfIC to save runtime
 [d,ind] = sort(diag(pcaD),1,'descend');
 eigs_to_keep = find(cumsum(d)/sum(d) <= params.per_var);
 nEig = eigs_to_keep(end);
