@@ -292,7 +292,17 @@ switch handles.sortCriteria{popup_sel_index}
         [unused,idx] = sort([handles.units.separability],'descend');
         handles.unitIDsAsStrings = handles.unitIDsAsStrings(idx);
         unitIDsAsColoredStrings = unitIDsAsColoredStrings(idx);
-                
+    
+    case 'IsoIBg'
+        [unused,idx] = sort([handles.units.IsoIBg],'descend');
+        handles.unitIDsAsStrings = handles.unitIDsAsStrings(idx);
+        unitIDsAsColoredStrings = unitIDsAsColoredStrings(idx);
+        
+    case 'IsoINN'
+        [unused,idx] = sort([handles.units.IsoINN],'descend');
+        handles.unitIDsAsStrings = handles.unitIDsAsStrings(idx);
+        unitIDsAsColoredStrings = unitIDsAsColoredStrings(idx);
+
     case 'RSTD'
         [unused,idx] = sort([handles.units.RSTD],'ascend');
         handles.unitIDsAsStrings = handles.unitIDsAsStrings(idx);
@@ -648,6 +658,16 @@ switch feature
         xlabel(feature);ylabel('counts');
         set(findall(gcf,'type','text'),'fontSize',12);
         
+    case 'IsoIBg'
+        figure;hist([handles.units.IsoIBg],sqrt(N_UNITS));
+        xlabel(feature);ylabel('counts');
+        set(findall(gcf,'type','text'),'fontSize',12);
+        
+    case 'IsoINN'
+        figure;hist([handles.units.IsoINN],sqrt(N_UNITS));
+        xlabel(feature);ylabel('counts');
+        set(findall(gcf,'type','text'),'fontSize',12);
+        
     case 'RSTD'
         figure;hist([handles.units.RSTD],sqrt(N_UNITS));
         xlabel(feature);ylabel('counts');
@@ -709,6 +729,32 @@ switch feature
         
         if featMin > handles.params.minSeparability
             handles.params.minSeparability = featMin;
+        end
+        
+    case 'IsoIBg'
+        if ~isinf(featMax)
+            featMax = Inf;
+            msgbox(['Units with IsoIBg exceeding max. value will '...
+                'not be deleted!']);
+        end
+        toDelete = ( [handles.units.IsoIBg] < featMin ) | ...
+            ( [handles.units.IsoIBg] > featMax );
+
+        if featMin > handles.params.minIsoIBg
+            handles.params.minIsoIBg = featMin;
+        end
+        
+    case 'IsoINN'
+        if ~isinf(featMax)
+            featMax = Inf;
+            msgbox(['Units with IsoINN exceeding max. value will '...
+                'not be deleted!']);
+        end
+        toDelete = ( [handles.units.IsoINN] < featMin ) | ...
+            ( [handles.units.IsoINN] > featMax );
+
+        if featMin > handles.params.minIsoINN
+            handles.params.minIsoINN = featMin;
         end
 
     case 'RSTD'
@@ -928,7 +974,8 @@ if ispc && isequal(get(hObject,'BackgroundColor'), get(0,'defaultUicontrolBackgr
 end
 
 %sort criteria.
-handles.sortCriteria = {'index', 'separability', 'RSTD','skewness','kurtosis','SNR'};
+handles.sortCriteria = {'index', 'separability', 'IsoIBg', 'IsoINN',...
+                        'RSTD','skewness','kurtosis','SNR'};
 guidata(hObject, handles);
 %Set labels for unit state accordingly.
 set(hObject, 'String', handles.sortCriteria);
@@ -1011,6 +1058,30 @@ if ~isfield(units,'noise_std')
         units(i).noise_std = noise_std;
     end
 end
+
+%Calculate IsoI for legacy results
+
+if ~isfield(units,'IsoIBg') || ~isfield(units,'IsoINN')
+    t1 = clock;
+    fprintf('Compute isolation information measures for all units...\n');
+    sr = handles.params.sr;
+    upsample = handles.params.upsample;
+    thrFactor = handles.params.thrFactor;
+    for i = 1:length(units)
+        noise_std = units(i).noise_std;
+        tmpS = resample(handles.S(i,:),upsample,1);
+        [unused,pos_amplitudes] = find_peaks(-tmpS,...
+            thrFactor*noise_std,ceil(sr*upsample));
+        valid = pos_amplitudes > min(abs(units(i).amplitude));
+        IsoI = isoi(pos_amplitudes(valid),pos_amplitudes(~valid));
+        % no distinction between Bg and NN here:
+        units(i).IsoIBg = IsoI;
+        units(i).IsoINN = IsoI;
+    end
+    t2 = clock;
+    fprintf('...done in %g seconds.\n',etime(t2,t1));
+end
+
 handles.units = units;
 clear units
 %Update guidata
@@ -1112,11 +1183,13 @@ hold(handles.axes1,'on');
 %                     handles.stateColor{unit.state});
 handles.sPlot = plot(handles.axes1,S,'Color',[0 0 0]);
 
-title(handles.axes1, strcat('amplSD = ',num2str(unit.amplitudeSD),...
-      '; RSTD = ', num2str(unit.RSTD),'; sep. = ',...
-      num2str(unit.separability),...
-      '; skewn. = ', num2str(handles.skewn(whichone)),...
-      '; kurt. = ', num2str(handles.kurtosis(whichone))));%,...
+title(handles.axes1, strcat('amplSD = ',num2str(unit.amplitudeSD,2),...
+      '; RSTD = ', num2str(unit.RSTD,2),'; sep. = ',...
+      num2str(unit.separability,2),...
+      '; IsoIBg = ', num2str(unit.IsoIBg,2),...
+      '; IsoINN = ', num2str(unit.IsoINN,2),... 
+      '; skewn. = ', num2str(handles.skewn(whichone),2),...
+      '; kurt. = ', num2str(handles.kurtosis(whichone),2)));%,...
       %'; SNR = ', num2str(unit.snr)));
 
 %all threshold crossings.
@@ -1193,14 +1266,21 @@ handles.units(whichone).RSTD = ...
                             handles.units(whichone).amplitudeSD/...
                        mean(abs(handles.units(whichone).amplitude));
 if nnz(~valid) > 0
-handles.units(whichone).separability = (...
-    mean(abs(handles.units(whichone).amplitude)) - ...
-    mean(abs(handles.amplitudes(~valid))) ) /...
-    handles.units(whichone).noise_std;
+    handles.units(whichone).separability = (...
+        mean(abs(handles.units(whichone).amplitude)) - ...
+        mean(abs(handles.amplitudes(~valid))) ) /...
+        handles.units(whichone).noise_std;
+    IsoI = isoi(handles.amplitudes(valid),handles.amplitudes(~valid));
+    %IsoIBg and IsoINN are equivalent, because Bg is not clustered.
+    handles.units(whichone).IsoIBg = IsoI;
+    handles.units(whichone).IsoINN = IsoI;
 else
     handles.units(whichone).separability = ...
-    mean(abs(handles.units(whichone).amplitude)) / ...
-    handles.units(whichone).noise_std;
+        mean(abs(handles.units(whichone).amplitude)) / ...
+        handles.units(whichone).noise_std;
+    %IsoI measures are not defined because there are no other amplitudes
+    handles.units(whichone).IsoIBg = NaN;
+    handles.units(whichone).IsoINN = NaN;
 end
     
 handles.units(whichone).SDscore = [];
