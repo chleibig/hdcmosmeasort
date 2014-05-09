@@ -149,14 +149,25 @@ for i=1:dims;
         if N_CLU > 1
             units(i).separability = ( meanAmpWinner - ...
                 mean(abs(amplitudes(KluRes.dataClass == k_nearest))) )/noise_std;
+            units(i).IsoINN = isoi(...
+                              amplitudes(KluRes.dataClass == k_winner),...
+                              amplitudes(KluRes.dataClass == k_nearest));
+            units(i).IsoIBg = isoi(...
+                              amplitudes(KluRes.dataClass == k_winner),...
+                              amplitudes(KluRes.dataClass ~= k_winner));
         else
             units(i).separability = meanAmpWinner/noise_std; %corresponds to average
             %signal to noise ratio (noise is assumed to have unit variance)
+            %there is no nearest neighbour or background
+            units(i).IsoINN = NaN;
+            units(i).IsoBg = NaN;
         end
         
         units(i).time = indices(KluRes.dataClass == k_winner)/(sr*upsample);
         units(i).amplitude = x(indices(KluRes.dataClass==k_winner));
         units(i).noise_std = noise_std;
+        
+        
         
         
         if show
@@ -173,8 +184,10 @@ for i=1:dims;
                     x(indices(KluRes.dataClass==k)),...
                     'Color',colors(k,:),'Marker',marker,'LineStyle','none');
             end
-            title(strcat('amplSD = ',num2str(units(i).amplitudeSD),'; RSTD = ',...
-             num2str(units(i).RSTD),'; sep. = ',num2str(units(i).separability)));
+            title(strcat('amplSD = ',num2str(units(i).amplitudeSD,2),'; RSTD = ',...
+             num2str(units(i).RSTD,2),'; sep. = ',num2str(units(i).separability,2),...
+             '; IsoIBg = ',num2str(units(i).IsoIBg,2),...
+             '; IsoINN = ',num2str(units(i).IsoINN,2)));
             
             figure(fig2);subplot(splt_size,splt_size,i);hold on;
             %for k=1:max(KluRes.dataClass);
