@@ -147,10 +147,10 @@ for i=1:dims;
         units(i).RSTD = units(i).amplitudeSD/meanAmpWinner;
         
         if N_CLU > 1
-            units(i).separability = ( meanAmpWinner - ...
+            units(i).separability = abs( meanAmpWinner - ...
                 mean(abs(amplitudes(KluRes.dataClass == k_nearest))) )/noise_std;
         else
-            units(i).separability = meanAmpWinner/noise_std; %corresponds to average
+            units(i).separability = abs(meanAmpWinner)/noise_std; %corresponds to average
             %signal to noise ratio (noise is assumed to have unit variance)
         end
         
