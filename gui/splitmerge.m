@@ -758,7 +758,7 @@ switch feature
         end
 
     case 'RSTD'
-        if ~isinf(-featMin)
+        if ~isinf(abs(featMin))
             featMin = -Inf;
             msgbox(['Units with RSTD less than the min. value will '...
                     'not be deleted!']);
@@ -770,9 +770,9 @@ switch feature
         end
         
     case 'skewness'
-        if ~isinf(featMax)
-            featMax = Inf;
-            msgbox(['Units with skewness exceeding max. value will '...
+        if ~isinf(abs(featMin))
+            featMin = -Inf;
+            msgbox(['Units with skewness less than the min. value will '...
                     'not be deleted!']);
         end
         toDelete = ( [handles.skewn] < featMin ) | ...
