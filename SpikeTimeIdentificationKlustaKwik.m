@@ -160,7 +160,7 @@ for i=1:dims;
             %signal to noise ratio (noise is assumed to have unit variance)
             %there is no nearest neighbour or background
             units(i).IsoINN = NaN;
-            units(i).IsoBg = NaN;
+            units(i).IsoIBg = NaN;
         end
         
         units(i).time = indices(KluRes.dataClass == k_winner)/(sr*upsample);
