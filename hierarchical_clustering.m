@@ -34,7 +34,6 @@ else
   end;
 end
 
-
 % Check if there is anything to cluster at all:
 if length(SM) < 2
     fprintf('Warning: Clustering skipped because less than two input identities are provided.\n');
@@ -66,15 +65,16 @@ if plotting
     subplot(2,2,1);imagesc(SM);axis square; title('crosstalk');cb = colorbar;
     set(cb,'CLim',[0,1]);
     [I,J] = find(abs(SM) > min_sim);hold on;scatter(J,I);
-    subplot(2,2,2);hist(SM(:));title('hist(crosstalk)');
+    subplot(2,2,2);hist(SM(find(triu(SM,1))),sqrt(nnz(triu(SM,1))));
+    title('hist(crosstalk)');
     xlabel('crosstalk');ylabel('counts');
     subplot(2,2,3:4);dendrogram(Z);title('dendrogram based on distances');
     ylim([0,1]);
     hold on; plot([0 size(SM,1)+1],[max_dist max_dist],'r');
-    min_sim_tmp = input(strcat('Current min. crosstalk is ',num2str(min_sim),...
-    '.\nIf desired, please enter different threshold: '));
-    if ~isempty(min_sim_tmp);max_dist = 1 - min_sim_tmp;end
-    clear min_sim_tmp
+%     min_sim_tmp = input(strcat('Current min. crosstalk is ',num2str(min_sim),...
+%     '.\nIf desired, please enter different threshold: '));
+%     if ~isempty(min_sim_tmp);max_dist = 1 - min_sim_tmp;end
+%     clear min_sim_tmp
 end
 
 T = cluster(Z,'Cutoff',max_dist,'Criterion','distance');

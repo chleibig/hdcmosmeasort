@@ -147,6 +147,8 @@ fprintf('performed in %g seconds\n',etime(t2,t1));
 % Remove mixed units
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 
+%Fuse these with noise and include all other criteria from chapter 3 of
+%Diss
 if ~exist('A_mix','var'); A_mix = []; end
 if ~exist('S_mix','var'); S_mix = []; end
 if ~exist('units_mix','var'); units_mix = []; end
