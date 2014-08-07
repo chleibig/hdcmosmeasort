@@ -122,15 +122,17 @@ end
 
 if params.do_cICA
     
-    if (round(params.sr) <= 12) && (round(params.sr) >= 11)
-        params.L = 7; params.M = 0;
-    elseif (round(params.sr) <= 24) && (round(params.sr) >= 23)
-        params.L = 8;params.M = 12;
-    else
-        params.L = input('Please specify L: ');
-        params.M = input('Please specify M: ');
-    end
-    
+    params.L = 5;
+    params.M = 6;
+%     if (round(params.sr) <= 12) && (round(params.sr) >= 11)
+%         params.L = 7; params.M = 0;
+%     elseif (round(params.sr) <= 24) && (round(params.sr) >= 23)
+%         params.L = 8;params.M = 12;
+%     else
+%         params.L = input('Please specify L: ');
+%         params.M = input('Please specify M: ');
+%     end
+%     
 else
     params.L = 0;params.M = 0;
 end
@@ -139,8 +141,9 @@ params.allframes_cica = 1;
 params.min_corr = 0.05;
 params.grouping = 'cluster';
 params.max_cluster_size = 4;
-params.max_iter = 15;
-params.maxlags = params.L;
+params.max_iter = 1;
+%params.maxlags = params.L;
+params.maxlags = params.L + params.M;
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 
 
@@ -209,7 +212,8 @@ fprintf('...prepared %g ROIs in %g seconds\n',length(ROIs),etime(t2,t1));
 nrOfROIs = length(ROIs);
 
 if nrOfROIs >= feature('numCores')
-    N_SESSIONS = ceil(0.8*feature('numCores')-1);%-1 due to master process
+%     N_SESSIONS = ceil(0.8*feature('numCores')-1);%-1 due to master process
+      N_SESSIONS = feature('numCores')-3;%at least -1 due to master process
 else
     N_SESSIONS = nrOfROIs - 1;%-1 due to master process
 end
@@ -223,7 +227,7 @@ if N_SESSIONS > 0
 
     settings.multicoreDir = multicoreDir;
     settings.nrOfEvalsAtOnce = 1;%floor(nrOfROIs/N_SESSIONS); % default: 4
-    settings.maxEvalTimeSingle = 2500;
+    settings.maxEvalTimeSingle = Inf;
     settings.masterIsWorker = true;
     settings.useWaitbar = true;
 
