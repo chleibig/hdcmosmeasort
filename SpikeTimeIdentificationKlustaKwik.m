@@ -82,12 +82,6 @@ for i=1:dims;
         end
         
         
-        
-        
-        %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-        % Perform potentially a merging
-        %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-        
         K = max(KluRes.dataClass);
         kRange = unique(KluRes.dataClass);
         N_CLU = length(kRange);
@@ -104,14 +98,22 @@ for i=1:dims;
                 class_score(k) = norm(mean(pks(:,KluRes.dataClass == k),2));
             end
             [unused, ind] = sort(class_score, 1, 'descend');
-            clear class_score kRange
-            %merge potential outliers:
-            if  (nnz(KluRes.dataClass == ind(1)) == 1) || ...
-                ( ( (std(amplitudes(KluRes.dataClass == ind(1))) <= 0.2) || ...
-                    (std(amplitudes(KluRes.dataClass == ind(2))) <= 0.2) ) ...
-                && ( abs(mean(abs(amplitudes(KluRes.dataClass == ind(1)))) ...
-                    - mean(abs(amplitudes(KluRes.dataClass == ind(2))))) <= 2.5 )) 
-                
+            
+             if ( std(amplitudes(KluRes.dataClass==ind(1)))/...
+                mean(abs(amplitudes(KluRes.dataClass == ind(1)))) <= 0.05 ) || ... 
+                ( mean(abs(amplitudes(KluRes.dataClass == ind(1)))) <= ... 
+                   mean(abs(amplitudes(KluRes.dataClass == ind(2)))) ) 
+               %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+               % Perform a merging
+               %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%% 
+               %This tries to catch the following scenarios:
+               %1. large amplitude outliers (generalized in terms of RSTD) 
+               %2. winner cluster has lower amplitudes than other cluster
+               
+               % ToDo: Do that recursively, as especially for the second 
+               % case, there might be more than one cluster with larger
+               % amplitudes
+
                 %merge second largest unit with largest unit.
                 tomerge = ind(2);
                 KluRes.dataClass(KluRes.dataClass == tomerge) = ind(1);
@@ -122,16 +124,21 @@ for i=1:dims;
                 ind = ind - (ind > tomerge);
                 
                 k_winner = ind(1);
-                try
-                    k_nearest = ind(3);
-                catch
-                    N_CLU = 1;
+                
+                if length(kRange) > 2
+                   %we merged two former clusters into one, only if there 
+                   %had been at least three clusters, nearest neighbour 
+                   %assignment is possible
+                   k_nearest = ind(3);
                 end
+                N_CLU = N_CLU - 1;%Cluster number reduced due to merging
             else
+                %We have at least two clusters and did not merge them
                 k_winner = ind(1);
                 k_nearest = ind(2);
             end
-            clear ind
+
+            clear ind class_score kRange
         end
         
         %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
@@ -147,8 +154,8 @@ for i=1:dims;
         units(i).RSTD = units(i).amplitudeSD/meanAmpWinner;
         
         if N_CLU > 1
-            units(i).separability = abs( meanAmpWinner - ...
-                mean(abs(amplitudes(KluRes.dataClass == k_nearest))) )/noise_std;
+            units(i).separability =  (meanAmpWinner - ...
+                mean(abs(amplitudes(KluRes.dataClass == k_nearest)))) /noise_std;
             units(i).IsoINN = isoi(...
                               amplitudes(KluRes.dataClass == k_winner),...
                               amplitudes(KluRes.dataClass == k_nearest));
