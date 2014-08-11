@@ -140,7 +140,6 @@ params.L = 5;
 params.M = 6;
 params.allframes_cica = 1;
 params.min_corr = 0.05;
-params.grouping = 'cluster';
 params.max_cluster_size = 4;
 params.max_iter = 1;
 %params.maxlags = params.L;

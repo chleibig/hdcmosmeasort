@@ -53,11 +53,6 @@ else
             min_corr = (varargin{i+1});
         case 'M'
             M = (varargin{i+1});
-        case 'approach'
-            approach = (varargin{i+1});
-            if ~(strcmp(approach,'pair') || strcmp(approach,'cluster'))
-                error(['Invalid value for approach: ''' approach '''']);
-            end
         case 'max_cluster_size'
             max_cluster_size = (varargin{i+1});
         case 'max_iter'
@@ -265,78 +260,45 @@ while iteration_no <= max_iter
     
     if ~isempty(cluster_ids) && iteration_no <= max_iter && do_cICA
         fprintf('Iteration %g...\n',iteration_no);
-        switch approach
-            case 'cluster'
-                for i=1:length(cluster_ids)
-                    fprintf('CICAAR for unmixing cluster %g,',i);
-                    fprintf(' containing channels:\n');
-                    cl_i = find(T == cluster_ids(i))'
-                    %this is the most time consuming step:
-                    tic;
-                    [e,ll,bic,invA0,Atau,Hlambda] = cicaarpro(X(cl_i,frames_ROI),L,M);
-                    toc;
-                    fprintf('BIC=%f, e=%f\n',bic,e);
-                    %Convolve source autocorrelation filters Hlambda with
-                    %mixing matrices:
-                    A0Atau = cat(3,pinv(invA0),Atau);
-                    Aeff = zeros(size(Atau,1),size(Atau,2),L+M+1);
-                    H0Hlambda = [ones(1,size(Hlambda,2)); Hlambda];
-                    for n = 1:size(Atau,1)
-                        for m = 1:size(Atau,2)
-                            Aeff(n,m,:) = conv(squeeze(A0Atau(n,m,:)),...
-                                                H0Hlambda(:,m));
-                        end
-                    end
-                    %Mixing matrix update:                    
-                    Aold = A(:,cl_i,:);
-                    A(:,cl_i,:) = 0;
-                    %the following could be vectorized:
-                    for tau = 1:L+M+1
-                        for k = 1:tau
-                            j = tau + 1 - k;
-                            A(:,cl_i,tau) = A(:,cl_i,tau) + ...
-                                            Aold(:,:,k)*Aeff(:,:,j);
-                        end
-                    end
-                    X(cl_i,:) = cicaarprosep(invA0,Atau,X(cl_i,:));
-                    %compute whitened sources Z:
-                    X(cl_i,:) = cicaarwhitensources(Hlambda,X(cl_i,:));
-                    %X = cicaarprosep(pinv(A(:,:,1)),A(:,:,2:end),X_org); 
-                    %append current cluster to list of touched component
-                    %combinations:
-                    touched(length(touched)+1).IDs = cl_i;
+
+        for i=1:length(cluster_ids)
+            fprintf('CICAAR for unmixing cluster %g,',i);
+            fprintf(' containing channels:\n');
+            cl_i = find(T == cluster_ids(i))'
+            %this is the most time consuming step:
+            tic;
+            [e,ll,bic,invA0,Atau,Hlambda] = cicaarpro(X(cl_i,frames_ROI),L,M);
+            toc;
+            fprintf('BIC=%f, e=%f\n',bic,e);
+            %Convolve source autocorrelation filters Hlambda with
+            %mixing matrices:
+            A0Atau = cat(3,pinv(invA0),Atau);
+            Aeff = zeros(size(Atau,1),size(Atau,2),L+M+1);
+            H0Hlambda = [ones(1,size(Hlambda,2)); Hlambda];
+            for n = 1:size(Atau,1)
+                for m = 1:size(Atau,2)
+                    Aeff(n,m,:) = conv(squeeze(A0Atau(n,m,:)),...
+                        H0Hlambda(:,m));
                 end
-                
-            case 'pair' %maybe conceptually wrong and should be removed
-                [I,J] = find(abs(SM) >= min_corr);
-                M_pairs = length(I);
-                invA0_tmp = eye(size(X,1),size(X,1));
-                Atau_tmp = zeros(size(X,1),size(X,1),L+M);
-                for i=1:M_pairs
-                    fprintf('CICAAR for unmixing pair %g ...',i);
-                    %this is the most time consuming step:
-                    tic;
-                    [e,ll,bic,invA0,Atau,Hlambda] = cicaarpro(X([I(i) J(i)],:),L,M);
-                    toc;
-                    invA0_tmp([I(i) J(i)],[I(i) J(i)]) = invA0;
-                    Atau_tmp([I(i) J(i)],[I(i) J(i)],:) = Atau;
-                    fprintf('BIC=%f, e=%f\n',bic,e);
-                    A_new = cat(3,pinv(invA0),Atau);
-                    A_old = A(:,[I(i) J(i)],:);
-                    A(:,[I(i) J(i)],:) = 0;
-                    for tau = 1:L+M+1
-                        for k = 1:tau
-                            j = tau + 1 - k;
-                            A(:,[I(i) J(i)],tau) = A(:,[I(i) J(i)],tau)+...
-                                                 A_old(:,:,k)*A_new(:,:,j);
-                        end
-                    end
-                    touched(length(touched)+1).IDs = [I(i) J(i)];
+            end
+            %Mixing matrix update:
+            Aold = A(:,cl_i,:);
+            A(:,cl_i,:) = 0;
+            %the following could be vectorized:
+            for tau = 1:L+M+1
+                for k = 1:tau
+                    j = tau + 1 - k;
+                    A(:,cl_i,tau) = A(:,cl_i,tau) + ...
+                        Aold(:,:,k)*Aeff(:,:,j);
                 end
-                %X = cicaarprosep(pinv(A(:,:,1)),A(:,:,2:end),X_org);
-                %the following unmixing was observed to lead to
-                %instabilities:
-                X = cicaarprosep(invA0_tmp,Atau_tmp,X);
+            end
+            X(cl_i,:) = cicaarprosep(invA0,Atau,X(cl_i,:));
+            %compute whitened sources Z:
+            X(cl_i,:) = cicaarwhitensources(Hlambda,X(cl_i,:));
+            %X = cicaarprosep(pinv(A(:,:,1)),A(:,:,2:end),X_org);
+            %append current cluster to list of touched component
+            %combinations:
+            touched(length(touched)+1).IDs = cl_i;
         end
 
         if plotting
@@ -347,7 +309,7 @@ while iteration_no <= max_iter
                 subplot(pltsize,pltsize,i);plot(X(find(T == i),:)');
             end
         end
-        
+
     else
         S_cica = X;
         A_tau = A;
