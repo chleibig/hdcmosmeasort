@@ -143,7 +143,7 @@ for i=1:dims;
         residuals_std = std(pks(:,KluRes.dataClass==k_winner),0,2);
         units(i).SDscore = max(residuals_std);
         units(i).amplitudeSD = std(amplitudes(KluRes.dataClass==k_winner));
-        meanAmpWinner = mean(abs(amplitudes(KluRes.dataClass == k_winner)));
+        meanAmpWinner = nanmean(abs(amplitudes(KluRes.dataClass == k_winner)));
         units(i).RSTD = units(i).amplitudeSD/meanAmpWinner;
         
         if N_CLU > 1

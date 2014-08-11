@@ -70,7 +70,7 @@ params.roi.minNoEvents = 3 * ... %multiplying factor in Spikes / second
     (params.frameStartTimes(end) - params.frameStartTimes(1))/1000;
 
 params.roi.mergeThr = 0.1;
-params.roi.maxSensorsPerROI = 128;
+params.roi.maxSensorsPerROI = 300;
 
 params.roi.horizon = 2*floor(params.sr);%~1 ms to the left and to the right
 %of detected activity is taken for the temporal ROI
@@ -117,13 +117,12 @@ if params.interactive
     params.do_cICA = input(['Do you want to perform convolutive ICA(1)? '...
                             ' (0, otherwise)?']);
 else
-   params.do_cICA = true;
+   params.do_cICA = false;
 end
 
 if params.do_cICA
     
-    params.L = 5;
-    params.M = 6;
+    
 %     if (round(params.sr) <= 12) && (round(params.sr) >= 11)
 %         params.L = 7; params.M = 0;
 %     elseif (round(params.sr) <= 24) && (round(params.sr) >= 23)
@@ -137,6 +136,8 @@ else
     params.L = 0;params.M = 0;
 end
 
+params.L = 5;
+params.M = 6;
 params.allframes_cica = 1;
 params.min_corr = 0.05;
 params.grouping = 'cluster';

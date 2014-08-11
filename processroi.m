@@ -69,7 +69,7 @@ if params.do_cICA
     %Initialize lagged filters:
     A_tau = zeros(size(X,1),size(A,2));
     A_tau(N_mask,:) = A;
-    A_tau(:,:,2:params.L+1) = 0;
+    A_tau(:,:,2:(params.L+params.M+1)) = 0;
 
     if params.allframes_cica
         frames_ROI_cica = true(size(X,2),1);
