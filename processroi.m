@@ -69,7 +69,7 @@ if params.do_cICA
     %Initialize lagged filters:
     A_tau = zeros(size(X,1),size(A,2));
     A_tau(N_mask,:) = A;
-    A_tau(:,:,2:params.L+1) = 0;
+    A_tau(:,:,2:(params.L+params.M+1)) = 0;
 
     if params.allframes_cica
         frames_ROI_cica = true(size(X,2),1);
@@ -147,6 +147,8 @@ fprintf('performed in %g seconds\n',etime(t2,t1));
 % Remove mixed units
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 
+%Fuse these with noise and include all other criteria from chapter 3 of
+%Diss
 if ~exist('A_mix','var'); A_mix = []; end
 if ~exist('S_mix','var'); S_mix = []; end
 if ~exist('units_mix','var'); units_mix = []; end

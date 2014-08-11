@@ -21,7 +21,7 @@ min_corr = 0.15;
 M = 0;
 max_cluster_size = 2;
 max_iter = 5;
-maxlags = ceil(sr);
+maxlags = L+M;
 min_no_peaks = 2;
 t_s = 0.5;
 t_jitter = 1;
@@ -85,10 +85,10 @@ end
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 
 % S_cica sources;
-% A_tau (N_sensors,D_sources,L+1) updated mixing matrices
+% A_tau (N_sensors,D_sources,L+M+1) updated mixing matrices
 
-if (size(A,3) - 1) ~= L
-    error('Mismatch of order L and number of mixing matrices A.')
+if (size(A,3) - 1) ~= L+M
+    error('Mismatch of order L+M and number of mixing matrices A.')
 end
 
 
@@ -276,19 +276,31 @@ while iteration_no <= max_iter
                     [e,ll,bic,invA0,Atau,Hlambda] = cicaarpro(X(cl_i,frames_ROI),L,M);
                     toc;
                     fprintf('BIC=%f, e=%f\n',bic,e);
-                    %Mixing matrix update:
-                    A_new = cat(3,inv(invA0),Atau);
-                    A_old = A(:,cl_i,:);
+                    %Convolve source autocorrelation filters Hlambda with
+                    %mixing matrices:
+                    A0Atau = cat(3,pinv(invA0),Atau);
+                    Aeff = zeros(size(Atau,1),size(Atau,2),L+M+1);
+                    H0Hlambda = [ones(1,size(Hlambda,2)); Hlambda];
+                    for n = 1:size(Atau,1)
+                        for m = 1:size(Atau,2)
+                            Aeff(n,m,:) = conv(squeeze(A0Atau(n,m,:)),...
+                                                H0Hlambda(:,m));
+                        end
+                    end
+                    %Mixing matrix update:                    
+                    Aold = A(:,cl_i,:);
                     A(:,cl_i,:) = 0;
                     %the following could be vectorized:
-                    for tau = 1:L+1
+                    for tau = 1:L+M+1
                         for k = 1:tau
                             j = tau + 1 - k;
                             A(:,cl_i,tau) = A(:,cl_i,tau) + ...
-                                            A_old(:,:,k)*A_new(:,:,j);
+                                            Aold(:,:,k)*Aeff(:,:,j);
                         end
                     end
                     X(cl_i,:) = cicaarprosep(invA0,Atau,X(cl_i,:));
+                    %compute whitened sources Z:
+                    X(cl_i,:) = cicaarwhitensources(Hlambda,X(cl_i,:));
                     %X = cicaarprosep(pinv(A(:,:,1)),A(:,:,2:end),X_org); 
                     %append current cluster to list of touched component
                     %combinations:
@@ -299,7 +311,7 @@ while iteration_no <= max_iter
                 [I,J] = find(abs(SM) >= min_corr);
                 M_pairs = length(I);
                 invA0_tmp = eye(size(X,1),size(X,1));
-                Atau_tmp = zeros(size(X,1),size(X,1),L);
+                Atau_tmp = zeros(size(X,1),size(X,1),L+M);
                 for i=1:M_pairs
                     fprintf('CICAAR for unmixing pair %g ...',i);
                     %this is the most time consuming step:
@@ -309,10 +321,10 @@ while iteration_no <= max_iter
                     invA0_tmp([I(i) J(i)],[I(i) J(i)]) = invA0;
                     Atau_tmp([I(i) J(i)],[I(i) J(i)],:) = Atau;
                     fprintf('BIC=%f, e=%f\n',bic,e);
-                    A_new = cat(3,inv(invA0),Atau);
+                    A_new = cat(3,pinv(invA0),Atau);
                     A_old = A(:,[I(i) J(i)],:);
                     A(:,[I(i) J(i)],:) = 0;
-                    for tau = 1:L+1
+                    for tau = 1:L+M+1
                         for k = 1:tau
                             j = tau + 1 - k;
                             A(:,[I(i) J(i)],tau) = A(:,[I(i) J(i)],tau)+...

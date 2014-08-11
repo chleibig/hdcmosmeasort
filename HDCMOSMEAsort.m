@@ -65,8 +65,8 @@ end
 
 %%%%% ROI construction %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 params.roi.method = 'cog';
-params.roi.maxSensorsPerEvent = Inf;
-params.roi.minNoEvents = 1 * ... %multiplying factor in Spikes / second
+params.roi.maxSensorsPerEvent = 169;
+params.roi.minNoEvents = 3 * ... %multiplying factor in Spikes / second
     (params.frameStartTimes(end) - params.frameStartTimes(1))/1000;
 
 params.roi.mergeThr = 0.1;
@@ -122,25 +122,29 @@ end
 
 if params.do_cICA
     
-    if (round(params.sr) <= 12) && (round(params.sr) >= 11)
-        params.L = 7; params.M = 0;
-    elseif (round(params.sr) <= 24) && (round(params.sr) >= 23)
-        params.L = 8;params.M = 12;
-    else
-        params.L = input('Please specify L: ');
-        params.M = input('Please specify M: ');
-    end
     
+%     if (round(params.sr) <= 12) && (round(params.sr) >= 11)
+%         params.L = 7; params.M = 0;
+%     elseif (round(params.sr) <= 24) && (round(params.sr) >= 23)
+%         params.L = 8;params.M = 12;
+%     else
+%         params.L = input('Please specify L: ');
+%         params.M = input('Please specify M: ');
+%     end
+%     
 else
     params.L = 0;params.M = 0;
 end
 
+params.L = 5;
+params.M = 6;
 params.allframes_cica = 1;
-params.min_corr = 0.1;
+params.min_corr = 0.05;
 params.grouping = 'cluster';
 params.max_cluster_size = 4;
 params.max_iter = 1;
-params.maxlags = params.L;
+%params.maxlags = params.L;
+params.maxlags = params.L + params.M;
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 
 
@@ -155,9 +159,12 @@ params.sign_lev = 0.05; %for automatic threshold adaptation;
 
 
 %%%%% Automatic removal of noise sources %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-params.min_no_peaks = 1 * ... %multiplying factor in Spikes / second
-    (params.frameStartTimes(end) - params.frameStartTimes(1))/1000;
-params.min_skewness = 0.05;
+params.min_no_peaks = 5 * ... %multiplying factor in Spikes / second
+    (params.frameStartTimes(end) - params.frameStartTimes(1))/1000 ...
+    + (1 - normcdf(params.thrFactor))*length(params.frameStartTimes);
+%previous line adds expected FPs due to Gaussian noise <-> min. Spiking
+%frequency less dependent on thrFactor.
+params.min_skewness = 0.2;
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 
 
@@ -171,7 +178,7 @@ params.maxRSTD = 0.5;
 params.t_s = 0.5; %ms
 params.t_jitter = 1; %ms
 %redundancy reduction parameters, adjustable in GUI.
-params.d_max = 35; %maximal distance in \mum for extrema of average waveforms
+params.d_max = 1000; %maximal distance in \mum for extrema of average waveforms
 params.coin_thr = 0.5; %fraction of coincident spikes
 params.sim_thr = 0.5; %similarity of average waveforms
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
@@ -206,7 +213,8 @@ fprintf('...prepared %g ROIs in %g seconds\n',length(ROIs),etime(t2,t1));
 nrOfROIs = length(ROIs);
 
 if nrOfROIs >= feature('numCores')
-    N_SESSIONS = ceil(0.7*feature('numCores')-1);%-1 due to master process
+%     N_SESSIONS = ceil(0.8*feature('numCores')-1);%-1 due to master process
+      N_SESSIONS = feature('numCores')-3;%at least -1 due to master process
 else
     N_SESSIONS = nrOfROIs - 1;%-1 due to master process
 end
@@ -220,7 +228,7 @@ if N_SESSIONS > 0
 
     settings.multicoreDir = multicoreDir;
     settings.nrOfEvalsAtOnce = 1;%floor(nrOfROIs/N_SESSIONS); % default: 4
-    settings.maxEvalTimeSingle = 2500;
+    settings.maxEvalTimeSingle = Inf;
     settings.masterIsWorker = true;
     settings.useWaitbar = true;
 
