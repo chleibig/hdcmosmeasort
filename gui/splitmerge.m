@@ -1041,9 +1041,7 @@ handles.params = params;
 %all sources.
 S = cat(1,ROIs.S);
 handles.S = S;
-handles.skewn = skewness(S');
-handles.kurtosis = kurtosis(S');
-clear S
+
 %all units.
 units = [];
 for i = 1:length(ROIs);
@@ -1058,6 +1056,24 @@ if ~isfield(units,'noise_std')
         units(i).noise_std = noise_std;
     end
 end
+
+if ~isfield(units,'skewn')
+    fprintf('Computing skewness...\n');
+    skewn = num2cell(skewness(S'));
+    [units.skewn] = deal(skewn{:});
+    clear skewn
+end
+handles.skewn = [units.skewn];
+
+if ~isfield(units,'kurt')
+    fprintf('Computing kurtosis...\n');
+    kurt = num2cell(kurtosis(S'));
+    [units.kurt] = deal(kurt{:});
+end
+handles.kurtosis = [units.kurt];
+
+clear S
+
 
 %Calculate IsoI for legacy results
 
@@ -1097,8 +1113,6 @@ function dataexport(hObject, eventdata, handles)
 %changes we have to store accordingly.
 %go through handels.ROIs, overwrite previous data with changes and push
 %the results to the workspace.
-
-dbstop if error
 
 for i = 1:length(handles.ROIs);
     %delete <-> state '4'

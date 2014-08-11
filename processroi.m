@@ -180,6 +180,12 @@ end
 
 data_tmp = reshape(X,...
     [length(sensor_rows_roi) length(sensor_cols_roi) size(X,2)]);
+
+fprintf('Computing skewness...\n');
+skewn = skewness(S');
+fprintf('Computing kurtosis...\n');
+kurt = kurtosis(S');
+
 for k = 1:length(units)
     units(k).A_tau = A_tau(:,k,:);
     %Consider to calculate STAs only based on "non-coincident" spikes!
@@ -189,8 +195,10 @@ for k = 1:length(units)
     units(k).boss_row = sensor_rows_roi(row_max);
     units(k).boss_col = sensor_cols_roi(col_max);
     units(k).snr = extrSTA/median(abs(data_tmp(row_max,col_max,:))/0.6745);
+    units(k).skewn = skewn(k);
+    units(k).kurt = kurt(k);
 end
-clear data_tmp
+clear data_tmp skewn kurtosis
 
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%

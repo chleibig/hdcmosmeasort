@@ -42,7 +42,7 @@ params.sensor_rho = 1000000/(params.d_row * params.d_col); %per mm²
 % Default arguments
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 
-params.plotting =  0;
+params.plotting = 0;
 params.interactive = 0;
 
 %%%%% Event detection is not planned to be done in Matlab - refactor that %
@@ -70,7 +70,7 @@ params.roi.minNoEvents = 3 * ... %multiplying factor in Spikes / second
     (params.frameStartTimes(end) - params.frameStartTimes(1))/1000;
 
 params.roi.mergeThr = 0.1;
-params.roi.maxSensorsPerROI = 300;
+params.roi.maxSensorsPerROI = 128;
 
 params.roi.horizon = 2*floor(params.sr);%~1 ms to the left and to the right
 %of detected activity is taken for the temporal ROI
@@ -113,35 +113,13 @@ params.ica.renorm = false; %if true renormalize W and S such that only noise
 
                        
 %%%%% convolutive ICA %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-if params.interactive
-    params.do_cICA = input(['Do you want to perform convolutive ICA(1)? '...
-                            ' (0, otherwise)?']);
-else
-   params.do_cICA = false;
-end
-
-if params.do_cICA
-    
-    
-%     if (round(params.sr) <= 12) && (round(params.sr) >= 11)
-%         params.L = 7; params.M = 0;
-%     elseif (round(params.sr) <= 24) && (round(params.sr) >= 23)
-%         params.L = 8;params.M = 12;
-%     else
-%         params.L = input('Please specify L: ');
-%         params.M = input('Please specify M: ');
-%     end
-%     
-else
-    params.L = 0;params.M = 0;
-end
-
+params.do_cICA = true;
 params.L = 5;
 params.M = 6;
 params.allframes_cica = 1;
 params.min_corr = 0.05;
 params.max_cluster_size = 4;
-params.max_iter = 1;
+params.max_iter = 15;
 %params.maxlags = params.L;
 params.maxlags = params.L + params.M;
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
