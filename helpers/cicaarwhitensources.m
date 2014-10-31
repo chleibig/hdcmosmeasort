@@ -1,5 +1,5 @@
 function Z = cicaarwhitensources(Hlambda,S)
-% CICAARPROWHITENS
+% CICAARPROWHITENSOURCES
 %
 % Synopsis
 % ========
@@ -9,7 +9,8 @@ function Z = cicaarwhitensources(Hlambda,S)
 % Purpose
 % =======
 % 
-% Whiten sources as estimated by the CICAAR function CICAARPRO
+% Whiten sources as estimated by the CICAAR functions CICAARPRO together
+% with CICAARPROSEP
 % available at http://www.machlea.com/mads/cicaar-pro.html
 % 
 % the original code is copyright protected as follows:

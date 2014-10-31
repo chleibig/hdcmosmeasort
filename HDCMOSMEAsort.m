@@ -113,13 +113,13 @@ params.ica.renorm = false; %if true renormalize W and S such that only noise
 
                        
 %%%%% convolutive ICA %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-params.do_cICA = true;
+params.do_cICA = false;
 params.L = 5;
 params.M = 6;
 params.allframes_cica = 1;
 params.min_corr = 0.05;
 params.max_cluster_size = 4;
-params.max_iter = 15;
+params.max_iter = 1;
 %params.maxlags = params.L;
 params.maxlags = params.L + params.M;
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
@@ -191,7 +191,7 @@ nrOfROIs = length(ROIs);
 
 if nrOfROIs >= feature('numCores')
 %     N_SESSIONS = ceil(0.8*feature('numCores')-1);%-1 due to master process
-      N_SESSIONS = feature('numCores')-3;%at least -1 due to master process
+      N_SESSIONS = feature('numCores')-5;%at least -1 due to master process
 else
     N_SESSIONS = nrOfROIs - 1;%-1 due to master process
 end
