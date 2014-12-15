@@ -11,7 +11,7 @@ memory
 
 params = struct(); %bundles all parameters
 params.filename = filename;
-
+params.gtFilename = '../Gaussian11,5kHz_7,4x7,4_SNvar_1141_23-01-14.txt';
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 % Get data and array specs from metadata of hdf5 file
@@ -70,7 +70,7 @@ params.roi.minNoEvents = 3 * ... %multiplying factor in Spikes / second
     (params.frameStartTimes(end) - params.frameStartTimes(1))/1000;
 
 params.roi.mergeThr = 0.1;
-params.roi.maxSensorsPerROI = 128;
+params.roi.maxSensorsPerROI = 169;
 
 params.roi.horizon = 2*floor(params.sr);%~1 ms to the left and to the right
 %of detected activity is taken for the temporal ROI
@@ -222,7 +222,8 @@ if N_SESSIONS > 0
     fprintf('\nParallel processing of %g different ROIs...\n',nrOfROIs);
     t1 = clock;
     %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-    ROIs = cell2mat(startmulticoremaster(@processroi,parameterCell,settings));
+    ROIs = cell2mat(startmulticoremaster(@processroisupervisedpartial,...
+                                         parameterCell,settings));
     %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
     t2 = clock;
     fprintf(['Parallel processing of %g different regions ',...
@@ -241,7 +242,7 @@ else
     tmpROIs = cell(1, nrOfROIs);
     for i = 1:nrOfROIs
         ROIs(i).k = i;
-        [ tmpROIs{i} ] = processroi( ROIs(i), params );
+        [ tmpROIs{i} ] = processroisupervisedpartial( ROIs(i), params );
     end
     ROIs = cell2mat(tmpROIs);
     clear tmpROIs
