@@ -7,11 +7,11 @@ function [ ROIs, params, ROIsAsCC ] = HDCMOSMEAsort(filename, filenameEvents)
 
 diary logfile_HDCMOSMEAsort.txt
 
-memory
+%memory
 
 params = struct(); %bundles all parameters
 params.filename = filename;
-params.gtFilename = '../Gaussian11,5kHz_7,4x7,4_SNvar_1141_23-01-14.txt';
+
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 % Get data and array specs from metadata of hdf5 file
@@ -149,6 +149,13 @@ params.min_skewness = 0.2;
 params.maxRSTD = 0.5;
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 
+%%%%% Selective features %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+params.minSeparability = 0;
+params.minIsoIBg = 0;
+params.minIsoINN = 0;
+params.minKurtosis = 0;
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+
 
 %%%%% Fusion of results from different regions of interest %%%%%%%%%%%%%%%%
 %spike train alignment.
@@ -222,7 +229,7 @@ if N_SESSIONS > 0
     fprintf('\nParallel processing of %g different ROIs...\n',nrOfROIs);
     t1 = clock;
     %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-    ROIs = cell2mat(startmulticoremaster(@processroisupervisedpartial,...
+    ROIs = cell2mat(startmulticoremaster(@processroi,...
                                          parameterCell,settings));
     %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
     t2 = clock;
@@ -242,7 +249,7 @@ else
     tmpROIs = cell(1, nrOfROIs);
     for i = 1:nrOfROIs
         ROIs(i).k = i;
-        [ tmpROIs{i} ] = processroisupervisedpartial( ROIs(i), params );
+        [ tmpROIs{i} ] = processroi( ROIs(i), params );
     end
     ROIs = cell2mat(tmpROIs);
     clear tmpROIs
@@ -269,7 +276,8 @@ end
 %SaveResults(ROIs, params);   <-> save results from GUI !
     
 t_total_2 = clock;
-fprintf('Total HDCMOSMEAsort performed in %g seconds\n',etime(t_total_2,t_total_1));
+fprintf('Total HDCMOSMEAsort performed in %g seconds\n',...
+    etime(t_total_2,t_total_1));
 
 diary off
 
