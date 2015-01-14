@@ -1086,7 +1086,7 @@ if ~isfield(units,'IsoIBg') || ~isfield(units,'IsoINN')
     for i = 1:length(units)
         noise_std = units(i).noise_std;
         tmpS = resample(handles.S(i,:),upsample,1);
-        [unused,pos_amplitudes] = find_peaks(-tmpS,...
+        [unused,pos_amplitudes] = searchpeaks(-tmpS,...
             thrFactor*noise_std,ceil(sr*upsample));
         valid = pos_amplitudes > min(abs(units(i).amplitude));
         IsoI = isoi(pos_amplitudes(valid),pos_amplitudes(~valid));
@@ -1165,7 +1165,7 @@ noise_std = unit.noise_std;
 thrFactor = handles.params.thrFactor;
 handles.threshold = -thrFactor*noise_std;
 
-[indices,pos_amplitudes] = find_peaks(-S,thrFactor*noise_std,ceil(sr*upsample));
+[indices,pos_amplitudes] = searchpeaks(-S,thrFactor*noise_std,ceil(sr*upsample));
 
 amplitudes = -1*pos_amplitudes;
 

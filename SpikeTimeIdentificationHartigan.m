@@ -26,7 +26,7 @@ for i=1:N_comp;
     %Skewness is assumed to be corrected previously such that spikes
     %are negative deflections.
     noise_std = median(abs(X(i,:))/0.6745);
-    [indices,pos_amplitudes] = find_peaks(-X(i,:),...
+    [indices,pos_amplitudes] = searchpeaks(-X(i,:),...
                                     5*noise_std,ceil(sr));
     amplitudes = -1*pos_amplitudes;
     
