@@ -36,7 +36,7 @@ lastCol = find(params.sensor_cols == sensor_cols_roi(end));
 firstFrame = 1;
 lastFrame = length(params.frameStartTimes);
 
-X = readDataBlock(params.filename,...
+X = readdatablock(params.filename,...
                     firstRow,lastRow,firstCol,lastCol,firstFrame,lastFrame);
 X = reshape(X,[size(X,1)*size(X,2) size(X,3)]);
             
