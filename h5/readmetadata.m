@@ -1,5 +1,5 @@
-function [metadata] = read_metadata(filename)
-%[metadata] = read_metadata(filename)
+function [metadata] = readmetadata(filename)
+%[metadata] = readmetadata(filename)
 %
 % reads metadata from HDCMOSMEA data stored according to fileversion
 % 'NH5_1.0.0' as specified in NH5_specification.txt

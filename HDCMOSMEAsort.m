@@ -17,7 +17,7 @@ params.filename = filename;
 % Get data and array specs from metadata of hdf5 file
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 
-metadata = read_metadata(filename);
+metadata = readmetadata(filename);
 
 params.sensor_rows = metadata.sensorRows;
 params.sensor_cols = metadata.sensorCols;
