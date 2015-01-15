@@ -103,7 +103,8 @@ while iteration_no <= max_iter
     
     % 1. get indices of components to keep
     
-    [keep] = checkfornoisycomponents(X,min_skewness,thrFactor, min_no_peaks,sr,plotting);
+    [keep] = checkfornoisycomponents(X,min_skewness,thrFactor, ...
+                                     min_no_peaks,sr,plotting);
 
     % 2. remove components and store them away:
     S_noise = [S_noise;X(~keep,:)];
@@ -136,15 +137,15 @@ while iteration_no <= max_iter
     % Estimate crosstalk
     %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
     
-    SD = SpatialDistance(A, d_row, d_col, N_row, N_col);
+    SD = spatialdistance(A, d_row, d_col, N_row, N_col);
 
-    SM = channel_crosstalk_wiener(X(:,frames_ROI), maxlags, SD, d_max);
+    SM = channelcrosstalkwiener(X(:,frames_ROI), maxlags, SD, d_max);
 
     %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
     % Group channels based on crosstalk
     %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 
-    [T] = hierarchical_clustering(SM,min_corr,'plotting',plotting);
+    [T] = hierarchicalclustering(SM,min_corr,'plotting',plotting);
     %counts(i): total # of members belonging to cluster i:
     counts = arrayfun(@(x)(sum(T == x)),1:max(T));
     fprintf('Identified %g clusters showing crosstalk.\n',...
@@ -176,7 +177,7 @@ while iteration_no <= max_iter
                 cl_i_tmp = cl_i;
                 while length(cl_i_tmp) > max_cluster_size
                     d_sm = d_sm + 0.01;
-                    t = hierarchical_clustering(sm_cl_i,...
+                    t = hierarchicalclustering(sm_cl_i,...
                         min_corr + d_sm,'plotting',0);
                     t_counts = arrayfun(@(x)(sum(t == x)),1:max(t));
                     %take the biggest remaining subcluster:

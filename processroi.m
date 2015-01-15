@@ -132,7 +132,9 @@ A_tau = A_tau(:,keep,:);
 
 fprintf('Spike time identification and clustering with KlustaKwik\n');
 t1 = clock;
-[units] = SpikeTimeIdentificationKlustaKwik(S,0,params.upsample, params.sr,params.thrFactor,params.plotting);
+[units] = spiketimeidentificationklustakwik(S,0,params.upsample, ...
+                                            params.sr,params.thrFactor,...
+                                            params.plotting);
 t2 = clock;
 fprintf('performed in %g seconds\n',etime(t2,t1));
 
@@ -189,7 +191,7 @@ kurt = kurtosis(S');
 for k = 1:length(units)
     units(k).A_tau = A_tau(:,k,:);
     %Consider to calculate STAs only based on "non-coincident" spikes!
-    units(k).STA = GetSTA(data_tmp, units(k).time, params.sr, 0);
+    units(k).STA = computetemplate(data_tmp, units(k).time, params.sr, 0);
     extrSTA = max(max(max(abs(units(k).STA))));
     [row_max,col_max] = find(max(abs(units(k).STA),[],3) == extrSTA);
     units(k).boss_row = sensor_rows_roi(row_max);
@@ -218,7 +220,7 @@ clear data_tmp skewn kurtosis
 %Experiment with additional criteria to decide upon which duplicate
 %partner to remove:
 % for d = 1:N_dupl
-    %         SpikeTimeIdentificationKlustaKwik(S(duplicate_pairs(d,:),:),0,10, sr, 1);
+    %         spiketimeidentificationklustakwik(S(duplicate_pairs(d,:),:),0,10, sr, 1);
     %         if (units(duplicate_pairs(d,1)).RSTD > 1.5*units(duplicate_pairs(d,2)).RSTD)
     %             %duplicate_pairs(d,1) is considered to be a mixture and will be
     %             %removed

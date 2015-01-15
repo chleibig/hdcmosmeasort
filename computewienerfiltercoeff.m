@@ -1,5 +1,6 @@
-function [ w ] = GetWienerFilterCoeff( input, reference, order )
-%WIENERFILTER computes the wiener filter coefficients
+function [ w ] = computewienerfiltercoeff( input, reference, order )
+% [ w ] = computewienerfiltercoeff( input, reference, order )
+% computes the wiener filter coefficients
 % w = [w_0 ... w_order] by minimizing the squared
 % error between the filtered input sequence and the
 % reference signal (the desired source signal)

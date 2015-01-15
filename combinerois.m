@@ -115,7 +115,7 @@ for i = 1:N_OL_PAIRS
         
         for d = 1:size(duplicate_pairs,1)
             %---debugging---
-            %SpikeTimeIdentificationKlustaKwik([roisIn(I(i)).S(duplicate_pairs(d,1),:);roisIn(J(i)).S(duplicate_pairs(d,2),:)],0,10, sr, 1);
+            %spiketimeidentificationklustakwik([roisIn(I(i)).S(duplicate_pairs(d,1),:);roisIn(J(i)).S(duplicate_pairs(d,2),:)],0,10, sr, 1);
             
 %             dupl_RSTD = [dupl_RSTD; [roisIn(I(i)).units(duplicate_pairs(d,1)).RSTD roisIn(J(i)).units(duplicate_pairs(d,2)).RSTD]];
 %             dupl_amplSD = [dupl_amplSD; [roisIn(I(i)).units(duplicate_pairs(d,1)).amplitudeSD roisIn(J(i)).units(duplicate_pairs(d,2)).amplitudeSD]];

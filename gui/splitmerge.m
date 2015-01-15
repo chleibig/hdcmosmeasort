@@ -458,7 +458,8 @@ function pushbuttonSTA_Callback(hObject, eventdata, handles)
 % handles    structure with handles and user data (see GUIDATA)
 
 currentUnit = str2double(handles.unitIDsAsStrings{get(handles.listbox1,'Value')});
-GetSTA(handles.data,handles.units(currentUnit).time,handles.params.sr,1);
+computetemplate(handles.data,...
+                handles.units(currentUnit).time,handles.params.sr,1);
 % -------------------------------------------------------------------------
 
 
@@ -1144,7 +1145,7 @@ assignin('base','params',handles.params);
 guidata(hObject, handles);
 
 %Save results to basic event file.
-SaveResults(handles.ROIs, handles.params);
+saveresults(handles.ROIs, handles.params);
 
 %--------------------------------------------------------------------------
 function selectcomponent(hObject, eventdata, handles, whichone)
@@ -1310,8 +1311,9 @@ dataTmp = handles.data(...
        (handles.params.sensor_rows <= handles.ROIs(k).sensor_rows(end)),...
        (handles.ROIs(k).sensor_cols(1) <= handles.params.sensor_cols) & ...
        (handles.params.sensor_cols <= handles.ROIs(k).sensor_cols(end)),:);
-handles.units(whichone).STA = GetSTA(dataTmp,handles.time(valid),...
-                            handles.params.sr,0);
+handles.units(whichone).STA = computetemplate(dataTmp,...
+                                              handles.time(valid),...
+                                              handles.params.sr,0);
 clear dataTmp
 % unit position.
 extrSTA = max(max(max(abs(handles.units(whichone).STA))));

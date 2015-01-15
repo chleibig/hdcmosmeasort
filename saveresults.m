@@ -1,6 +1,6 @@
-function SaveResults( ROIs, params )
-%SAVERESULTS save results as event list
-%   currently uses temporal offset from frameStartTimes!
+function saveresults( ROIs, params )
+% saveresults( ROIs, params ) 
+% as event list, currently uses temporal offset from frameStartTimes!
 
 filename = params.filename;
 tOffset = params.frameStartTimes(1);
@@ -11,7 +11,8 @@ fid = fopen(strcat(filename,'.events'),'wt');
 
 
 %Header:
-fprintf(fid, 'filename\tplace\ttime\tamplitude\tboss_column\tboss_row\tsensors\tquality\n');
+fprintf(fid, ['filename\tplace\ttime\tamplitude\tboss_column\tboss_row'...
+              '\tsensors\tquality\n']);
 
 unit_id = 0;
 for l = 1:length(ROIs)

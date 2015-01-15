@@ -83,8 +83,8 @@ sim = zeros(N,M);
 for n=1:N
     for m=1:M
         %Calculate STAs on the fly:
-        STAn = GetSTA(data,nUnits(n).time,sr,0);
-        STAm = GetSTA(data,mUnits(m).time,sr,0);
+        STAn = computetemplate(data,nUnits(n).time,sr,0);
+        STAm = computetemplate(data,mUnits(m).time,sr,0);
         STAn = reshape(STAn,...
          [size(STAn,1)*size(STAn,2) size(STAn,3)]);
         STAm = reshape(STAm,...

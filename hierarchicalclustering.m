@@ -1,9 +1,10 @@
-function [T] = hierarchical_clustering(SM,min_sim,varargin)
-%Wrapper function for hierarchical clustering of Statistics Toolbox
+function [T] = hierarchicalclustering(SM,min_sim,varargin)
+% [T] = hierarchicalclustering(SM,min_sim,varargin)
+% Wrapper function for hierarchical clustering of Statistics Toolbox
 
-%Input:
+% Input:
 
-%SM upper triangular similarity matrix
+% SM upper triangular similarity matrix
 
 % author: Christian Leibig
 
@@ -36,7 +37,8 @@ end
 
 % Check if there is anything to cluster at all:
 if length(SM) < 2
-    fprintf('Warning: Clustering skipped because less than two input identities are provided.\n');
+    fprintf(['Warning: Less than two items provided, '...
+             'no clustering performed.\n']);
     T = 1;
     return
 end
@@ -62,7 +64,9 @@ max_dist = 1 - min_sim;
 Z = linkage(Y,'single');
 if plotting
     figure;
-    subplot(2,2,1);imagesc(SM);axis square; title('crosstalk');cb = colorbar;
+    subplot(2,2,1);imagesc(SM);axis square;
+    title('crosstalk');
+    cb = colorbar;
     set(cb,'CLim',[0,1]);
     [I,J] = find(abs(SM) > min_sim);hold on;scatter(J,I);
     subplot(2,2,2);hist(SM(find(triu(SM,1))),sqrt(nnz(triu(SM,1))));

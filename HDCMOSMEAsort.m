@@ -273,7 +273,7 @@ end
 % Save results
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 
-%SaveResults(ROIs, params);   <-> save results from GUI !
+%saveresults(ROIs, params);   <-> save results from GUI !
     
 t_total_2 = clock;
 fprintf('Total HDCMOSMEAsort performed in %g seconds\n',...
