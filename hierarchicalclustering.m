@@ -79,6 +79,7 @@ if plotting
 %     '.\nIf desired, please enter different threshold: '));
 %     if ~isempty(min_sim_tmp);max_dist = 1 - min_sim_tmp;end
 %     clear min_sim_tmp
+    keyboard;
 end
 
 T = cluster(Z,'Cutoff',max_dist,'Criterion','distance');
