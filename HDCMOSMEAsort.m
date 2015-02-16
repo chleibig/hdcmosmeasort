@@ -12,6 +12,7 @@ diary logfile_HDCMOSMEAsort.txt
 params = struct(); %bundles all parameters
 params.filename = filename;
 
+params.processroiHandle = str2func('processroiembeddedcica');
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 % Get data and array specs from metadata of hdf5 file
@@ -113,9 +114,9 @@ params.ica.renorm = false; %if true renormalize W and S such that only noise
 
                        
 %%%%% convolutive ICA %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-params.do_cICA = true;
-params.L = 9;
-params.M = 5;
+params.do_cICA = false;
+params.L = 5;
+params.M = 6;
 params.allframes_cica = 1;
 params.min_corr = 0.02;
 params.max_cluster_size = 4;
@@ -229,7 +230,7 @@ if N_SESSIONS > 0
     fprintf('\nParallel processing of %g different ROIs...\n',nrOfROIs);
     t1 = clock;
     %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-    ROIs = cell2mat(startmulticoremaster(@processroi,...
+    ROIs = cell2mat(startmulticoremaster(params.processroiHandle,...
                                          parameterCell,settings));
     %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
     t2 = clock;
@@ -249,7 +250,7 @@ else
     tmpROIs = cell(1, nrOfROIs);
     for i = 1:nrOfROIs
         ROIs(i).k = i;
-        [ tmpROIs{i} ] = processroi( ROIs(i), params );
+        [ tmpROIs{i} ] = params.processroiHandle( ROIs(i), params );
     end
     ROIs = cell2mat(tmpROIs);
     clear tmpROIs
