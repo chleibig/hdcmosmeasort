@@ -115,7 +115,7 @@ params.ica.renorm = false; %if true renormalize W and S such that only noise
                        
 %%%%% convolutive ICA %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 params.do_cICA = false;
-params.L = 9;
+params.L = 8;
 params.M = 5;
 params.allframes_cica = 1;
 params.min_corr = 0.02;

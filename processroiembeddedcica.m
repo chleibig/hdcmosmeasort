@@ -47,19 +47,11 @@ X = reshape(X,[size(X,1)*size(X,2) size(X,3)]);
 %          spatiotemporally embedded data
 N_mask = ROI.N_mask;
 
-
-%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-% Consider to preprocess with NEO
-%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-
-% ...
-
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 % Spatiotemporal embedding
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 
 [Xbar] = spatiotemporalembedding(X(N_mask,:), params.L);
-
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 % Estimate maximal number of neurons from covariance matrix
@@ -87,7 +79,8 @@ pcaD = pcaD(ind(1:nEig),ind(1:nEig));
 pcsig = pcaE'*Xbar;
 fprintf('Dimensionality reduced to %g out of %g PCs.\n',nEig,...
     size(Xbar,1));
- 
+clear Xbar
+
 fprintf('Trying to extract %g independent components.\n',params.ica.numOfIC);
 t1 = clock;
 [A, W] = fastica(pcsig,'g',params.ica.nonlinearity,...
@@ -97,8 +90,7 @@ t2 = clock;
 fprintf('Extraction of ICs performed in %g seconds\n',etime(t2,t1));
 
 S = W*pcsig;
-clear pcsig Xbar
-
+clear pcsig
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 % ToDo: Disembed mixing/unmixing matrices
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
