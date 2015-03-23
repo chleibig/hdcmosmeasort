@@ -5,14 +5,15 @@ function [ ROIs, params, ROIsAsCC ] = HDCMOSMEAsort(filename, filenameEvents)
 
 % created by Christian Leibig 12.02.13
 
-diary logfile_HDCMOSMEAsort.txt
+diary logfile_HDCMOSMEAsort.txt0
 
 %memory
 
 params = struct(); %bundles all parameters
 params.filename = filename;
+params.gtFilename = '/home/cleibig/SimulatedData/SynData07-12/SynDataSets/SNR/Gaussian23kHz_7,4x7,4_SNvar_1141_27-01-15.txt';
 
-params.processroiHandle = str2func('processroiembeddedcica');
+params.processroiHandle = str2func('processroisupervised');
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 % Get data and array specs from metadata of hdf5 file
@@ -115,7 +116,7 @@ params.ica.renorm = false; %if true renormalize W and S such that only noise
                        
 %%%%% convolutive ICA %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 params.do_cICA = false;
-params.L = 8;
+params.L = 9;
 params.M = 5;
 params.allframes_cica = 1;
 params.min_corr = 0.02;
@@ -199,7 +200,7 @@ nrOfROIs = length(ROIs);
 
 if nrOfROIs >= feature('numCores')
 %     N_SESSIONS = ceil(0.8*feature('numCores')-1);%-1 due to master process
-      N_SESSIONS = feature('numCores')-2;%at least -1 due to master process
+      N_SESSIONS = feature('numCores')-2;%at leasta -1 due to master process
 else
     N_SESSIONS = nrOfROIs - 1;%-1 due to master process
 end
