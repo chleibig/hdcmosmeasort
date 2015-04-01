@@ -51,7 +51,7 @@ N_mask = ROI.N_mask;
 % Spatiotemporal embedding
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 
-[Xbar] = spatiotemporalembedding(X(N_mask,:), params.L);
+[Xbar] = spatiotemporalembedding(X(N_mask,:), params.L+1);
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 % Estimate maximal number of neurons from covariance matrix
@@ -88,24 +88,22 @@ t1 = clock;
     'verbose',params.ica.verbose);
 t2 = clock;
 fprintf('Extraction of ICs performed in %g seconds\n',etime(t2,t1));
-
+a
 S = W*pcsig;
 clear pcsig
+
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-% ToDo: Disembed mixing/unmixing matrices
+% Disembed mixing/unmixing matrices
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 % %calculate effective As and Ws in original sensor space
-A = pcaE*A;
+A = pcaE*A; % A is now nnz(N_mask) x M
 W = W*pcaE';
 
-if ~exist('A_tau','var')
-    A_tau = zeros(size(X,1),size(A,2));
-    %%%% CAUTION: FALSE ENTRIES IN THE MIXING MATRICES DISEMBED CORRECT
-    %%%% ONES
-    A_tau(N_mask,:) = 1;
-    A_tau(:,:,2:params.L+1) = 1; 
-    %A_tau(N_mask,:) = A;
-    %A_tau(:,:,2:params.L+1) = 0;
+% Get A_tau (N_sensors x M x L + 1) from A
+A_tau = zeros(length(sensor_rows_roi)*length(sensor_cols_roi),...
+              size(A,2), params.L+1);
+for k=1:size(A,2)
+      A_tau(N_mask,k,:) = reshape(A(:,k), [params.L+1 nnz(N_mask)])';
 end
 
 if params.ica.renorm

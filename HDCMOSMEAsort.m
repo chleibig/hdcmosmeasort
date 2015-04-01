@@ -5,7 +5,7 @@ function [ ROIs, params, ROIsAsCC ] = HDCMOSMEAsort(filename, filenameEvents)
 
 % created by Christian Leibig 12.02.13
 
-diary logfile_HDCMOSMEAsort.txt0
+diary logfile_HDCMOSMEAsort.txt
 
 %memory
 
