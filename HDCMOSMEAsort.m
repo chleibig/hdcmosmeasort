@@ -13,7 +13,7 @@ params = struct(); %bundles all parameters
 params.filename = filename;
 params.gtFilename = '/home/cleibig/SimulatedData/SynData07-12/SynDataSets/SNR/Gaussian23kHz_7,4x7,4_SNvar_1141_27-01-15.txt';
 
-params.processroiHandle = str2func('processroisupervised');
+params.processroiHandle = str2func('processroiembeddedcica');
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 % Get data and array specs from metadata of hdf5 file
@@ -116,7 +116,7 @@ params.ica.renorm = false; %if true renormalize W and S such that only noise
                        
 %%%%% convolutive ICA %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 params.do_cICA = false;
-params.L = 9;
+params.L = 5;
 params.M = 5;
 params.allframes_cica = 1;
 params.min_corr = 0.02;

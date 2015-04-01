@@ -88,7 +88,7 @@ t1 = clock;
     'verbose',params.ica.verbose);
 t2 = clock;
 fprintf('Extraction of ICs performed in %g seconds\n',etime(t2,t1));
-a
+
 S = W*pcsig;
 clear pcsig
 
