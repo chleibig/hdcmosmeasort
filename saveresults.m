@@ -22,7 +22,7 @@ for l = 1:length(ROIs)
             case 3
                 quality = 's';
             otherwise
-                quality = 'unspecified';
+                quality = 'u';%for unchecked
         end
         for i = 1:length(ROIs(l).units(k).time) 
             fprintf(fid,strcat(filename,'\t',num2str(unit_id),'\t',...

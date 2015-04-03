@@ -50,7 +50,6 @@ d_sensor_col = double(params.sensor_cols(2) - params.sensor_cols(1));
 params.d_row = d_sensor_row * params.pitch;
 params.d_col = d_sensor_col * params.pitch;
 
-
 params.sensor_rho = 1000000/(params.d_row * params.d_col); %per mm²
 
 
@@ -283,9 +282,24 @@ end
 % Combine results from different ROIs
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 
+%for highest accuracy:
 %start splitmerge from the command line to do that in a semiautomized
 %fashion after termination of HDCMOSMEAsort.m
 
+%alternatively:
+[units] = unitsfromrois(ROIs);
+
+%Set all unit states to unchecked.
+%1 - unchecked, 2 - mixture, 3 - single, % 4 - delete
+if ~isfield([units],'state')
+    [units.state] = deal(1);
+end
+%Based on redundancy - set some unit states to 4:
+% MAKE USE OF REDUNDANTCANDIDATES FROM SPLITMERGE
+
+%Save changed unit states back to ROIs
+[ROIs] = units2rois(units, ROIs);
+clear units
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 % Save results
