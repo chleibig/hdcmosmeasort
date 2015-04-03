@@ -2,13 +2,11 @@ function saveresults( ROIs, params )
 % saveresults( ROIs, params ) 
 % as event list, currently uses temporal offset from frameStartTimes!
 
-filename = params.filename;
+filename = params.filenameResults;
+
 tOffset = params.frameStartTimes(1);
 
-
-fid = fopen(strcat(filename,'.events'),'wt');
-
-
+fid = fopen(filename,'wt');
 
 %Header:
 fprintf(fid, ['filename\tplace\ttime\tamplitude\tboss_column\tboss_row'...
