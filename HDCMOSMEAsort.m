@@ -1,4 +1,4 @@
-function [ ROIs, params, ROIsAsCC ] = HDCMOSMEAsort(filename, filenameEvents)
+function [ ROIs, params, ROIsAsCC ] = HDCMOSMEAsort(params)
 %[ ROIs, params, ROIsAsCC ] = HDCMOSMEAsort(filename, filenameEvents)
 %HDCMOSMEAsort performs spike sorting of high density array data
 %based on (convolutive) ICA
@@ -7,19 +7,34 @@ function [ ROIs, params, ROIsAsCC ] = HDCMOSMEAsort(filename, filenameEvents)
 
 diary logfile_HDCMOSMEAsort.txt
 
-%memory
 
-params = struct(); %bundles all parameters
-params.filename = filename;
-params.gtFilename = '/home/cleibig/SimulatedData/SynData07-12/SynDataSets/SNR/Gaussian23kHz_7,4x7,4_SNvar_1141_27-01-15.txt';
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+% I/O
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 
-params.processroiHandle = str2func('processroiembeddedcica');
+%recording and events for ROI construction:
+dataPath = '/home/cleibig/SimulatedData/SynDataTest/0-0,4ms random/';
+params = setfieldifnotpresent(params,'filename',...
+                       strcat(dataPath,'syn8753vs8778.nfx.cpd.h5'));
+params = setfieldifnotpresent(params,'filenameEvents',...
+    strcat(dataPath,'syn8753vs8778.nfx.cpd.h5.basic_events'));
+clear dataPath    
+%results:
+resultsPath = '/home/cleibig/SimulatedData/SynDataTest/0-0,4ms random/';
+params = setfieldifnotpresent(params,'filenameResults',...
+    strcat(resultsPath,'syn8753vs8778.nfx.cpd.h5.events'));
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+% Local spike sorter
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+params = setfieldifnotpresent(params,'processroiHandle',...
+                                  str2func('processroiembeddedcica'));
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 % Get data and array specs from metadata of hdf5 file
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 
-metadata = readmetadata(filename);
+metadata = readmetadata(params.filename);
 
 params.sensor_rows = metadata.sensorRows;
 params.sensor_cols = metadata.sensorCols;
@@ -100,8 +115,8 @@ params.ica.allchannels = false; %if true, all channels are used
 %to be used (overwritten, if allchannels is true) gets assigned after
 %roi identification
 params.ica.nonlinearity = 'pow3';
-%Methods for estimating the number of ICs:
-%{'none','svdSpectrum','eigSpectrum','icaDeflation'}
+%Methods for estimating the number of ICs: 
+% 'none','svdSpectrum','eigSpectrum','icaDeflation'
 params.ica.estimate = 'eigSpectrum'; 
 params.ica.cpn  = 1; %components per neuron for later use to calculate
 %params.ica.numOfIC (overwritten, if params.estimate is true)
@@ -116,7 +131,7 @@ params.ica.renorm = false; %if true renormalize W and S such that only noise
                        
 %%%%% convolutive ICA %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 params.do_cICA = false;
-params.L = 5;
+params = setfieldifnotpresent(params,'L',6);
 params.M = 5;
 params.allframes_cica = 1;
 params.min_corr = 0.02;
@@ -181,12 +196,13 @@ metaData.sensor_rows = params.sensor_rows;
 metaData.sensor_cols = params.sensor_cols;
 metaData.sr = params.sr;
 metaData.frameStartTimes = params.frameStartTimes;
-metaData.filename_events = filenameEvents;
+metaData.filename_events = params.filenameEvents;
 
 fprintf('\nConstructing regions of interest...\n');
 t1 = clock;
 dummyData = []; %refactor: remove data from parameter list of roisegmentation
-[ROIs, OL, ROIsAsCC] = roisegmentation(dummyData, metaData, params.roi, params.plotting);
+[ROIs, OL, ROIsAsCC] = roisegmentation(dummyData, metaData, params.roi,...
+                                       params.plotting);
 t2 = clock;
 fprintf('...prepared %g ROIs in %g seconds\n',length(ROIs),etime(t2,t1));
 
@@ -216,7 +232,7 @@ if N_SESSIONS > 0
     settings.nrOfEvalsAtOnce = 1;%floor(nrOfROIs/N_SESSIONS); % default: 4
     settings.maxEvalTimeSingle = Inf;
     settings.masterIsWorker = true;
-    settings.useWaitbar = true;
+    settings.useWaitbar = false;
 
     % Build cell array containing all nrOfROIs parameter sets.
     parameterCell = cell(1, nrOfROIs);
@@ -275,7 +291,7 @@ end
 % Save results
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 
-%saveresults(ROIs, params);   <-> save results from GUI !
+saveresults(ROIs, params);
     
 t_total_2 = clock;
 fprintf('Total HDCMOSMEAsort performed in %g seconds\n',...
