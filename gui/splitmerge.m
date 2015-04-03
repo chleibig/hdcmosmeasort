@@ -1044,13 +1044,8 @@ S = cat(1,ROIs.S);
 handles.S = S;
 
 %all units.
-units = [];
-for i = 1:length(ROIs);
-    if ~isempty(ROIs(i).units);
-        [ROIs(i).units.k] = deal(i);
-        units = [units ROIs(i).units];
-    end
-end
+units = unitsfromrois(ROIs);
+
 if ~isfield(units,'noise_std')
     for i = 1:length(units)
         noise_std = median(abs(handles.S(i,:))/0.6745);
@@ -1115,28 +1110,42 @@ function dataexport(hObject, eventdata, handles)
 %go through handels.ROIs, overwrite previous data with changes and push
 %the results to the workspace.
 
-for i = 1:length(handles.ROIs);
-    %delete <-> state '4'
-    toDelete = [handles.units.k] == i & [handles.units.state] == 4;
-    if ~isfield(handles.ROIs(i),'units_del'); handles.ROIs(i).units_del = [];end
-    handles.ROIs(i).units_del = [handles.ROIs(i).units_del handles.units(toDelete)];
-    if ~isfield(handles.ROIs(i),'S_del'); handles.ROIs(i).S_del = [];end
-    handles.ROIs(i).S_del = [handles.ROIs(i).S_del;handles.S(toDelete,:)];
-    %map toDelete to index range in ROI.
-    toDelete = toDelete([handles.units.k] == i);
-    if ~isfield(handles.ROIs(i),'A_del'); handles.ROIs(i).A_del = [];end
-    handles.ROIs(i).A_del = cat(2,handles.ROIs(i).A_del,...
-                                handles.ROIs(i).A_tau(:,toDelete,:));    
-    clear toDelete
-    %single <-> state '3'
-    toSave = [handles.units.k] == i & [handles.units.state] <= 3;
-    handles.ROIs(i).units = handles.units(toSave);
-    handles.ROIs(i).S = handles.S(toSave,:);
-    %map toSave to index range in ROI.
-    toSave = toSave([handles.units.k] == i);
-    handles.ROIs(i).A_tau = handles.ROIs(i).A_tau(:,toSave,:);
-    clear toSave                                                          
-end
+[handles.ROIs] = units2rois(handles.units, handles.ROIs);
+
+% for i = 1:length(handles.ROIs);
+%     %delete <-> state '4'
+%     toDelete = [handles.units.k] == i & [handles.units.state] == 4;
+    
+%     if ~isfield(handles.ROIs(i),'units_del');
+%         handles.ROIs(i).units_del = [];
+%     end
+%     handles.ROIs(i).units_del = ...
+%                        [handles.ROIs(i).units_del handles.units(toDelete)];
+    
+%     if ~isfield(handles.ROIs(i),'S_del');
+%         handles.ROIs(i).S_del = [];
+%     end
+%     handles.ROIs(i).S_del = [handles.ROIs(i).S_del; handles.S(toDelete,:)];
+    
+%     %map toDelete to index range in ROI.
+%     toDelete = toDelete([handles.units.k] == i);
+    
+%     if ~isfield(handles.ROIs(i),'A_del'); 
+%         handles.ROIs(i).A_del = [];
+%     end
+%     handles.ROIs(i).A_del = cat(2,handles.ROIs(i).A_del,...
+%                                   handles.ROIs(i).A_tau(:,toDelete,:));    
+%     clear toDelete
+
+%     %single <-> state '3'
+%     toSave = [handles.units.k] == i & [handles.units.state] <= 3;
+%     handles.ROIs(i).units = handles.units(toSave);
+%     handles.ROIs(i).S = handles.S(toSave,:);
+%     %map toSave to index range in ROI.
+%     toSave = toSave([handles.units.k] == i);
+%     handles.ROIs(i).A_tau = handles.ROIs(i).A_tau(:,toSave,:);
+%     clear toSave                                                          
+% end
 
 assignin('base','ROIs',handles.ROIs);
 assignin('base','params',handles.params);
