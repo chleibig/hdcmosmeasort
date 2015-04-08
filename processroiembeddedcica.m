@@ -1,5 +1,5 @@
-function [ ROI ] = processroi( ROI, params )
-%[ ROI ] = processroi( ROI, params ) process - e.g. sort - a single region 
+function [ ROI ] = processroiembeddedcica( ROI, params )
+%[ ROI ] = processroiembeddedcica( ROI, params ) process - e.g. sort - a single region 
 %of interest. This function acts as a wrapper to be able to work on 
 %different ROIs in parallel.
 %
@@ -16,7 +16,7 @@ function [ ROI ] = processroi( ROI, params )
 % ROI - input ROI get's changed in place
 %
 %
-% christian.leibig@g-node.org, 10.09.13
+% christian.leibig@g-node.org, 16.02.15
 %
   
 fprintf('\nWorking on ROI %g...\n\n',ROI.k);
@@ -43,54 +43,71 @@ X = reshape(X,[size(X,1)*size(X,2) size(X,3)]);
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 
 %masks to index into the data block
-T_mask = ROI.T_mask;
+% T_mask - not used, as we do not want to bother with different chunks of
+%          spatiotemporally embedded data
 N_mask = ROI.N_mask;
 
-
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-% Preprocessing with fastICA
-%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-
-params.ica.frames = T_mask;
-params.ica.channels = N_mask;
-
-params.ica.numOfIC = ceil(params.ica.cpn/(params.sensor_rho/params.neuron_rho) * ...
-    nnz(params.ica.channels));
-
-[S, A, W, params.ica] = fasticanode(X,params.ica);
-
-
-
-%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-% Convolutive ICA
+% Spatiotemporal embedding
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 
-if params.do_cICA
-    %Initialize lagged filters:
-    A_tau = zeros(size(X,1),size(A,2));
-    A_tau(N_mask,:) = A;
-    A_tau(:,:,2:(params.L+params.M+1)) = 0;
+[Xbar] = spatiotemporalembedding(X(N_mask,:), params.L+1);
 
-    if params.allframes_cica
-        frames_ROI_cica = true(size(X,2),1);
-    else
-        frames_ROI_cica = T_mask;
-    end
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+% Estimate maximal number of neurons from covariance matrix
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 
-    %Perform convolutive ICA:
-    t1 = clock;
-    [S, A_tau, S_noise, A_noise] = convolutiveica(S,params.L,A_tau,params.sr,...
-        params.d_row,params.d_col,length(sensor_rows_roi),length(sensor_cols_roi),params.d_max,...
-        frames_ROI_cica,params.do_cICA,'M',params.M,'maxlags',params.maxlags,...
-        'plotting',params.plotting,'min_skewness',params.min_skewness,'min_corr',params.min_corr,...
-        'max_cluster_size',params.max_cluster_size,...
-        'max_iter',params.max_iter,'thrFactor',params.thrFactor,...
-        'min_no_peaks',params.min_no_peaks,...
-        't_s',params.t_s,'t_jitter',params.t_jitter, 'coin_thr',params.coin_thr);
-    t2 = clock;
-    fprintf('convolutive ICA step performed in %g seconds\n',etime(t2,t1));
-else
-    fprintf('Convolutive ICA is not applied!\n');
+t1 = clock;
+[pcaE, pcaD] = fastica(Xbar,'only','pca','verbose',params.ica.verbose);
+t2 = clock;
+fprintf('PCA performed in %g seconds.\n',etime(t2,t1));
+
+[d,ind] = sort(diag(pcaD),1,'descend');
+
+if strcmp(params.ica.estimate,'eigSpectrum')
+   nEig = estimatenumberofneurons(d,'linearFit', size(Xbar,2)); 
+   params.ica.numOfIC = nEig;
+end
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+% Reduce dimensionality to maximal number of neurons
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+
+pcaE = pcaE(:,ind(1:nEig));
+pcaD = pcaD(ind(1:nEig),ind(1:nEig));
+
+pcsig = pcaE'*Xbar;
+fprintf('Dimensionality reduced to %g out of %g PCs.\n',nEig,...
+    size(Xbar,1));
+clear Xbar
+
+fprintf('Trying to extract %g independent components.\n',params.ica.numOfIC);
+t1 = clock;
+[A, W] = fastica(pcsig,'g',params.ica.nonlinearity,...
+    'approach',params.ica.approach,'numOfIC',params.ica.numOfIC,...
+    'verbose',params.ica.verbose);
+t2 = clock;
+fprintf('Extraction of ICs performed in %g seconds\n',etime(t2,t1));
+
+S = W*pcsig;
+clear pcsig
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+% Disembed mixing/unmixing matrices
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+% %calculate effective As and Ws in original sensor space
+A = pcaE*A; % A is now nnz(N_mask) x M
+W = W*pcaE';
+
+% Get A_tau (N_sensors x M x L + 1) from A
+A_tau = zeros(length(sensor_rows_roi)*length(sensor_cols_roi),...
+              size(A,2), params.L+1);
+for k=1:size(A,2)
+      A_tau(N_mask,k,:) = reshape(A(:,k), [params.L+1 nnz(N_mask)])';
+end
+
+if params.ica.renorm
+    error('Reormalization not implemented, see other processroi examples!');
 end
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
@@ -107,14 +124,8 @@ clear skewn
 % Check for noisy components
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 
-%if convolutive ICA was not applied, we need to initialize some variables:
 if ~exist('A_noise','var'); A_noise = []; end
 if ~exist('S_noise','var'); S_noise = []; end
-if ~exist('A_tau','var')
-    A_tau = zeros(size(X,1),size(A,2));
-    A_tau(N_mask,:) = A;
-    A_tau(:,:,2:params.L+1) = 0;
-end
 
 [keep] = checkfornoisycomponents(S,params.min_skewness,params.thrFactor,...
                             params.min_no_peaks,params.sr,params.plotting);
@@ -137,12 +148,6 @@ t1 = clock;
                                             params.plotting);
 t2 = clock;
 fprintf('performed in %g seconds\n',etime(t2,t1));
-
-%     fprintf('Spike time identification with Hartigans dip test\n');
-%     t1 = clock;
-%     [units] = SpikeTimeIdentificationHartigan(S, params.sr,params.sign_lev,params.plotting,1);
-%     t2 = clock;
-%     fprintf('performed in %g seconds\n',etime(t2,t1));
 
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
@@ -203,82 +208,19 @@ end
 clear data_tmp skewn kurtosis
 
 
-%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-% Remove duplicates
-%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-
-% t1 = clock;
-% fprintf('Checking for duplicates...\n');
-% [duplicate_pairs] = checkforintraroiduplicates(units, params.sr, ...
-%     params.t_s, params.t_jitter, params.coin_thr, params.sim_thr, params.plotting, params.interactive);
-% N_dupl = size(duplicate_pairs,1);
-% t2 = clock;
-% fprintf('found %g intraregional duplicates in %g seconds\n',...
-%     N_dupl,etime(t2,t1));
-
-%dbstop in cICAsort.m at 326 if (N_dupl > 0)
-%Experiment with additional criteria to decide upon which duplicate
-%partner to remove:
-% for d = 1:N_dupl
-    %         spiketimeidentificationklustakwik(S(duplicate_pairs(d,:),:),0,10, sr, 1);
-    %         if (units(duplicate_pairs(d,1)).RSTD > 1.5*units(duplicate_pairs(d,2)).RSTD)
-    %             %duplicate_pairs(d,1) is considered to be a mixture and will be
-    %             %removed
-    %             break;
-    %         end
-    %         if (units(duplicate_pairs(d,2)).RSTD > 1.5*units(duplicate_pairs(d,1)).RSTD)
-    %             %duplicate_pairs(d,1) is considered to be a mixture and will be
-    %             %removed
-    %             duplicate_pairs(d,:) = duplicate_pairs(d,end:-1:1);
-    %             break;
-    %         end
-
-    %No mixture detected - the unit with higher separability will
-    %be kept
-%     if units(duplicate_pairs(d,1)).separability <= units(duplicate_pairs(d,2)).separability
-%         %remove the first
-%     else
-%         %remove the second
-%         duplicate_pairs(d,:) = duplicate_pairs(d,end:-1:1);
-%     end
-% end
-
-
-
-% if ~isempty(duplicate_pairs)
-%     remove = false(length(units),1);
-%     remove(duplicate_pairs(:,1)) = true;
-%     units_dupl = units(remove);
-%     S_dupl = S(remove,:);
-%     A_dupl = [];
-%     A_dupl = cat(2,A_dupl,units(remove).A_tau);
-%     units = units(~remove);
-%     S = S(~remove,:);
-%     A_tau = A_tau(:,~remove,:);
-%     clear remove
-% else
-    units_dupl = [];
-    S_dupl = [];
-    A_dupl = [];
-    duplicate_pairs = [];
-% end
 
 ROI.A = A;
-ROI.A_dupl = A_dupl;
 ROI.A_noise = A_noise;
 ROI.A_mix = A_mix;
 ROI.A_tau = A_tau;
 ROI.S = S;
-ROI.S_dupl = S_dupl;
 ROI.S_noise = S_noise;
 ROI.S_mix = S_mix;
 ROI.W = W;
-ROI.duplicate_pairs = duplicate_pairs;
 ROI.units = units;
-ROI.units_dupl = units_dupl;
 ROI.units_mix = units_mix;
 
-clear A A_dupl A_noise A_tau S S_dupl S_noise W duplicate_pairs units units_dupl
+clear A A_noise A_tau S S_noise W units
 
 clear A_mix S_mix units_mix
 

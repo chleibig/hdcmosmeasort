@@ -40,7 +40,7 @@ lastCol = find(params.sensor_cols == sensor_cols_roi(end));
 firstFrame = 1;
 lastFrame = length(params.frameStartTimes);
 
-X = readDataBlock(params.filename,...
+X = readdatablock(params.filename,...
                     firstRow,lastRow,firstCol,lastCol,firstFrame,lastFrame);
 
             
@@ -104,7 +104,7 @@ A_tau = zeros(length(sensor_rows_roi)*length(sensor_cols_roi),N_NEURONS,Tf);
 for i = 1:N_NEURONS
     tspk = time(strcmp(neuron,neuronLabels{i}));
     %Calculate STA on rectangular box surrounding the ROI
-    [template] = GetSTA(X,tspk,params.sr,0);
+    [template] = computetemplate(X,tspk,params.sr,0);
     template = reshape(template,...
         [size(template,1)*size(template,2) size(template,3)]);
     %use only values inside ROI for optimal filtering:
@@ -156,7 +156,9 @@ S = -S;
 
 fprintf('Spike time identification and clustering with KlustaKwik\n');
 t1 = clock;
-[units] = SpikeTimeIdentificationKlustaKwik(S,0,params.upsample, params.sr,params.thrFactor,params.plotting);
+[units] = spiketimeidentificationklustakwik(S,0,params.upsample, ...
+                                            params.sr,params.thrFactor,...
+                                            params.plotting);
 t2 = clock;
 fprintf('performed in %g seconds\n',etime(t2,t1));
 
@@ -177,7 +179,7 @@ kurt = kurtosis(S');
 for k = 1:length(units)
     units(k).A_tau = A_tau(:,k,:);
     %Consider to calculate STAs only based on "non-coincident" spikes!
-    units(k).STA = GetSTA(data_tmp, units(k).time, params.sr, 0);
+    units(k).STA = computetemplate(data_tmp, units(k).time, params.sr, 0);
     extrSTA = max(max(max(abs(units(k).STA))));
     [row_max,col_max] = find(max(abs(units(k).STA),[],3) == extrSTA);
     units(k).boss_row = sensor_rows_roi(row_max);

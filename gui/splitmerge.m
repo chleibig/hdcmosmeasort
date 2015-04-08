@@ -458,7 +458,8 @@ function pushbuttonSTA_Callback(hObject, eventdata, handles)
 % handles    structure with handles and user data (see GUIDATA)
 
 currentUnit = str2double(handles.unitIDsAsStrings{get(handles.listbox1,'Value')});
-GetSTA(handles.data,handles.units(currentUnit).time,handles.params.sr,1);
+computetemplate(handles.data,...
+                handles.units(currentUnit).time,handles.params.sr,1);
 % -------------------------------------------------------------------------
 
 
@@ -590,7 +591,7 @@ function pushbuttonSave_Callback(hObject, eventdata, handles)
 % end
 choice = questdlg(['Do you want to save the current state?'...
                   '(overwrite ROIs and params in workspace'...
-                  ' and ' handles.params.filename '.events on disk)'],...
+                  ' and ' handles.params.filenameResults ' on disk)'],...
                   '','Continue','Cancel','Cancel');
 if strcmp(choice,'Cancel')
    return
@@ -1032,7 +1033,7 @@ handles.ROIs = ROIs;
 handles.ROIsAsCC = evalin('base','ROIsAsCC');
 params = evalin('base','params');
 %handles.data = evalin('base','data');
-handles.data = readDataBlock(params.filename,...
+handles.data = readdatablock(params.filename,...
                     1,length(params.sensor_rows),...
                     1,length(params.sensor_cols),...
                     1,length(params.frameStartTimes));
@@ -1043,13 +1044,8 @@ S = cat(1,ROIs.S);
 handles.S = S;
 
 %all units.
-units = [];
-for i = 1:length(ROIs);
-    if ~isempty(ROIs(i).units);
-        [ROIs(i).units.k] = deal(i);
-        units = [units ROIs(i).units];
-    end
-end
+units = unitsfromrois(ROIs);
+
 if ~isfield(units,'noise_std')
     for i = 1:length(units)
         noise_std = median(abs(handles.S(i,:))/0.6745);
@@ -1086,7 +1082,7 @@ if ~isfield(units,'IsoIBg') || ~isfield(units,'IsoINN')
     for i = 1:length(units)
         noise_std = units(i).noise_std;
         tmpS = resample(handles.S(i,:),upsample,1);
-        [unused,pos_amplitudes] = find_peaks(-tmpS,...
+        [unused,pos_amplitudes] = searchpeaks(-tmpS,...
             thrFactor*noise_std,ceil(sr*upsample));
         valid = pos_amplitudes > min(abs(units(i).amplitude));
         IsoI = isoi(pos_amplitudes(valid),pos_amplitudes(~valid));
@@ -1114,28 +1110,42 @@ function dataexport(hObject, eventdata, handles)
 %go through handels.ROIs, overwrite previous data with changes and push
 %the results to the workspace.
 
-for i = 1:length(handles.ROIs);
-    %delete <-> state '4'
-    toDelete = [handles.units.k] == i & [handles.units.state] == 4;
-    if ~isfield(handles.ROIs(i),'units_del'); handles.ROIs(i).units_del = [];end
-    handles.ROIs(i).units_del = [handles.ROIs(i).units_del handles.units(toDelete)];
-    if ~isfield(handles.ROIs(i),'S_del'); handles.ROIs(i).S_del = [];end
-    handles.ROIs(i).S_del = [handles.ROIs(i).S_del;handles.S(toDelete,:)];
-    %map toDelete to index range in ROI.
-    toDelete = toDelete([handles.units.k] == i);
-    if ~isfield(handles.ROIs(i),'A_del'); handles.ROIs(i).A_del = [];end
-    handles.ROIs(i).A_del = cat(2,handles.ROIs(i).A_del,...
-                                handles.ROIs(i).A_tau(:,toDelete,:));    
-    clear toDelete
-    %single <-> state '3'
-    toSave = [handles.units.k] == i & [handles.units.state] <= 3;
-    handles.ROIs(i).units = handles.units(toSave);
-    handles.ROIs(i).S = handles.S(toSave,:);
-    %map toSave to index range in ROI.
-    toSave = toSave([handles.units.k] == i);
-    handles.ROIs(i).A_tau = handles.ROIs(i).A_tau(:,toSave,:);
-    clear toSave                                                          
-end
+[handles.ROIs] = units2rois(handles.units, handles.ROIs);
+
+% for i = 1:length(handles.ROIs);
+%     %delete <-> state '4'
+%     toDelete = [handles.units.k] == i & [handles.units.state] == 4;
+    
+%     if ~isfield(handles.ROIs(i),'units_del');
+%         handles.ROIs(i).units_del = [];
+%     end
+%     handles.ROIs(i).units_del = ...
+%                        [handles.ROIs(i).units_del handles.units(toDelete)];
+    
+%     if ~isfield(handles.ROIs(i),'S_del');
+%         handles.ROIs(i).S_del = [];
+%     end
+%     handles.ROIs(i).S_del = [handles.ROIs(i).S_del; handles.S(toDelete,:)];
+    
+%     %map toDelete to index range in ROI.
+%     toDelete = toDelete([handles.units.k] == i);
+    
+%     if ~isfield(handles.ROIs(i),'A_del'); 
+%         handles.ROIs(i).A_del = [];
+%     end
+%     handles.ROIs(i).A_del = cat(2,handles.ROIs(i).A_del,...
+%                                   handles.ROIs(i).A_tau(:,toDelete,:));    
+%     clear toDelete
+
+%     %single <-> state '3'
+%     toSave = [handles.units.k] == i & [handles.units.state] <= 3;
+%     handles.ROIs(i).units = handles.units(toSave);
+%     handles.ROIs(i).S = handles.S(toSave,:);
+%     %map toSave to index range in ROI.
+%     toSave = toSave([handles.units.k] == i);
+%     handles.ROIs(i).A_tau = handles.ROIs(i).A_tau(:,toSave,:);
+%     clear toSave                                                          
+% end
 
 assignin('base','ROIs',handles.ROIs);
 assignin('base','params',handles.params);
@@ -1144,7 +1154,7 @@ assignin('base','params',handles.params);
 guidata(hObject, handles);
 
 %Save results to basic event file.
-SaveResults(handles.ROIs, handles.params);
+saveresults(handles.ROIs, handles.params);
 
 %--------------------------------------------------------------------------
 function selectcomponent(hObject, eventdata, handles, whichone)
@@ -1165,7 +1175,7 @@ noise_std = unit.noise_std;
 thrFactor = handles.params.thrFactor;
 handles.threshold = -thrFactor*noise_std;
 
-[indices,pos_amplitudes] = find_peaks(-S,thrFactor*noise_std,ceil(sr*upsample));
+[indices,pos_amplitudes] = searchpeaks(-S,thrFactor*noise_std,ceil(sr*upsample));
 
 amplitudes = -1*pos_amplitudes;
 
@@ -1310,8 +1320,9 @@ dataTmp = handles.data(...
        (handles.params.sensor_rows <= handles.ROIs(k).sensor_rows(end)),...
        (handles.ROIs(k).sensor_cols(1) <= handles.params.sensor_cols) & ...
        (handles.params.sensor_cols <= handles.ROIs(k).sensor_cols(end)),:);
-handles.units(whichone).STA = GetSTA(dataTmp,handles.time(valid),...
-                            handles.params.sr,0);
+handles.units(whichone).STA = computetemplate(dataTmp,...
+                                              handles.time(valid),...
+                                              handles.params.sr,0);
 clear dataTmp
 % unit position.
 extrSTA = max(max(max(abs(handles.units(whichone).STA))));

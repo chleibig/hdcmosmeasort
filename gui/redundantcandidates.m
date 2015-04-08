@@ -62,8 +62,8 @@ if ~isempty(varargin)
             (combinedSensorCols(1) <= params.sensor_cols) & ...
             (params.sensor_cols <= combinedSensorCols(end)),:);
         for i = 1:length(nbrsOfCurrentUnit)
-            units(nbrsOfCurrentUnit(i)).STA = ...
-                GetSTA(dataTmp, units(nbrsOfCurrentUnit(i)).time, params.sr, 0);
+            units(nbrsOfCurrentUnit(i)).STA = computetemplate(dataTmp,...
+                           units(nbrsOfCurrentUnit(i)).time, params.sr, 0);
         end
         clear dataTmp
     else
@@ -112,8 +112,8 @@ else
                 (combinedSensorCols(1) <= params.sensor_cols) & ...
                 (params.sensor_cols <= combinedSensorCols(end)),:);
             for i = 1:length(nbrs{j})
-                units(nbrs{j}(i)).STA = ...
-                    GetSTA(dataTmp, units(nbrs{j}(i)).time, params.sr, 0);
+                units(nbrs{j}(i)).STA = computetemplate(dataTmp,...
+                                     units(nbrs{j}(i)).time, params.sr, 0);
             end
             clear dataTmp
         else

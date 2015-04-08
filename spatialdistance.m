@@ -1,7 +1,7 @@
-function [ SD ] = SpatialDistance(A_tau, d_row, d_col, N_row, N_col)
-%SPATIALDISTANCE Computes the pairwise euclidean distance between all com-
-%                ponents K, based on the extrema of the mixing matrices
-%                A_tau(:,k,:)
+function [ SD ] = spatialdistance(A_tau, d_row, d_col, N_row, N_col)
+% [ SD ] = spatialdistance(A_tau, d_row, d_col, N_row, N_col)
+% Computes the pairwise euclidean distance between all components K, 
+% based on the extrema of the mixing matrices A_tau(:,k,:)
 %   
 %   Input: 
 %
@@ -20,7 +20,7 @@ function [ SD ] = SpatialDistance(A_tau, d_row, d_col, N_row, N_col)
 K = size(A_tau,2);
 
 %Get extrema positions for all components in data coordinates:
-[row_ind, col_ind] = GetFilterExtrema(A_tau,1:N_row,1:N_col,0);
+[row_ind, col_ind] = getfilterextrema(A_tau,1:N_row,1:N_col,0);
 
 %Compute distance matrix:
 SD = zeros(K,K);

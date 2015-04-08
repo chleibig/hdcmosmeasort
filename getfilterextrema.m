@@ -1,8 +1,9 @@
-function [row_ind, col_ind] = GetFilterExtrema(A,rowlist, collist,sensor_coord)
-%Get the spatial coordinates of the absolute extremum of the spatiotemporal
-%mixing matrix A(:,i,:) for each source i 
+function [row_ind, col_ind] = getfilterextrema(A, rowlist, collist, sensor_coord)
+% [row_ind, col_ind] = getfilterextrema(A, rowlist, collist, sensor_coord)
+% Get the spatial coordinates of the absolute extremum of the spatiotemporal
+% mixing matrix A(:,i,:) for each source i 
 
-%Input:
+% Input:
 
 % A : (N,D,L+1) multidimensional array containing the zero-lag plus
 % L lagged mixing matrices for N sensors and D sources respectively

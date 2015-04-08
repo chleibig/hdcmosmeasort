@@ -1,8 +1,10 @@
-function [STA, varargout] = GetSTA(data,time,sr,show, weights)
-%GetSTA
+function [STA, varargout] = computetemplate(data,time,sr,show, weights)
+% [STA, varargout] = computetemplate(data,time,sr,show, weights)
+% Template is estimated as spike triggered average (STA)
 %
-% Input:
-%
+% Input
+% =====
+% 
 % data: (N_ROW x N_COL x N_SAMPLES) array
 % time: list of time stamps in ms
 % sr: Sampling rate in kHz
@@ -12,7 +14,8 @@ function [STA, varargout] = GetSTA(data,time,sr,show, weights)
 % weights: row vector of length(time) containing
 %          unnormalized, positive weights for STA
 %
-% Output:
+% Output
+% ======
 %
 % STA: (N_ROW,N_COL,FRAMES_STA) - array
 %

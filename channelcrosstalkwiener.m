@@ -1,6 +1,7 @@
-function [ CM ] = channel_crosstalk_wiener( X, order, SD, d_max )
-%CHANNEL_CROSSTALK_WIENER estimate crosstalk between
-%channels
+function [ CM ] = channelcrosstalkwiener( X, order, SD, d_max )
+% [ CM ] = channelcrosstalkwiener( X, order, SD, d_max )
+% estimate crosstalk between channels
+%
 %
 % Inputs
 % ======
@@ -39,11 +40,11 @@ for i=1:D
     for j=i+1:D
         if SD(i,j) > d_max; CM(i,j) = 0;
         else
-            [ w ] = GetWienerFilterCoeff( X(j,:), X(i,:), order );
+            [ w ] = computewienerfiltercoeff( X(j,:), X(i,:), order );
             i_from_j = conv(w,X(j,:));
             i_from_j = i_from_j(1:end-order);
             clear w 
-            [ w ] = GetWienerFilterCoeff( X(i,:), X(j,:), order );
+            [ w ] = computewienerfiltercoeff( X(i,:), X(j,:), order );
             j_from_i = conv(w,X(i,:));
             j_from_i = j_from_i(1:end-order);
             clear w
