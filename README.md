@@ -1,12 +1,8 @@
 # README #
 
-This README would normally document whatever steps are necessary to get your application up and running.
+HDCMOSMEAsort
 
-### What is this repository for? ###
-
-* Quick summary
-* Version
-* [Learn Markdown](https://bitbucket.org/tutorials/markdowndemo)
+* Matlab toolbox for spike sorting data from large-scale, high-density micro-electrode arrays
 
 ### How do I get set up? ###
 
