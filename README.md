@@ -1,6 +1,6 @@
 # README #
 
-### HDCMOSMEAsort - a Matlab toolbox for spike sorting data from large-scale, high-density micro-electrode arrays ###
+### HDCMOSMEAsort - a MATLAB toolbox for spike sorting data from large-scale, high-density micro-electrode arrays ###
 
 * Summary of set up
 * Configuration
