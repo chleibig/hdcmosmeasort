@@ -2,20 +2,20 @@
 
 ### HDCMOSMEAsort - a MATLAB toolbox for spike sorting data from large-scale, high-density micro-electrode arrays ###
 
-* Summary of set up
-* Configuration
-* Dependencies
-* Database configuration
-* How to run tests
-* Deployment instructions
+### Reference ###
 
-### Contribution guidelines ###
+Leibig, C., 2015: Unsupervised neural spike identification for large-scale, high-density micro-electrode arrays, Doctoral Thesis, University of Tübingen
 
-* Writing tests
-* Code review
-* Other guidelines
+### Dependencies ###
 
-### Who do I talk to? ###
+* fastICA
+* multicore
+* networkComponents
+* CICAARPRO
+* hdf5matlab
+* KlustaKwik
+* kde
+* kldiv
+* suplabel
 
-* Repo owner or admin
-* Other community or team contact
+Contact Christian Leibig at christian.leibig@g-node.org for questions and a tested copy of all dependencies.
