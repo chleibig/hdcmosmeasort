@@ -4,7 +4,7 @@
 
 ### Reference ###
 
-Leibig, C., 2015: Unsupervised neural spike identification for large-scale, high-density micro-electrode arrays, Doctoral Thesis, University of Tübingen
+Leibig, C., 2015: "Unsupervised neural spike identification for large-scale, high-density micro-electrode arrays", Doctoral Thesis
 
 ### Dependencies ###
 
