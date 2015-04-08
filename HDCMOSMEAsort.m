@@ -215,17 +215,18 @@ nrOfROIs = length(ROIs);
 
 if nrOfROIs >= feature('numCores')
 %     N_SESSIONS = ceil(0.8*feature('numCores')-1);%-1 due to master process
-      N_SESSIONS = feature('numCores')-2;%at leasta -1 due to master process
+      setfieldifnotpresent(params,'N_SESSIONS',...
+          feature('numCores')-2);%at leasta -1 due to master process
 else
-    N_SESSIONS = nrOfROIs - 1;%-1 due to master process
+    setfieldifnotpresent(params,'N_SESSIONS',nrOfROIs - 1);%-1 due to master process
 end
 
 
-if N_SESSIONS > 0
+if params.N_SESSIONS > 0
     
     multicoreDir = 'multicorefiles';
     mkdir(multicoreDir);
-    startmatlabsessions(N_SESSIONS,multicoreDir);
+    startmatlabsessions(params.N_SESSIONS,multicoreDir);
 
     settings.multicoreDir = multicoreDir;
     settings.nrOfEvalsAtOnce = 1;%floor(nrOfROIs/N_SESSIONS); % default: 4
