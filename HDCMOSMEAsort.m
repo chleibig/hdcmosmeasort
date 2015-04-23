@@ -184,6 +184,7 @@ params = setfieldifnotpresent(params,'d_max',params.pitch);
 params = setfieldifnotpresent(params,'coin_thr',0.5);
 %similarity of average waveforms
 params = setfieldifnotpresent(params,'sim_thr',0.5);
+params = setfieldifnotpresent(params,'autoremoveRedundantUnits',false);
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 
 
@@ -285,20 +286,42 @@ end
 % Combine results from different ROIs
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 
-%for highest accuracy:
-%start splitmerge from the command line to do that in a semiautomized
-%fashion after termination of HDCMOSMEAsort.m
+fprintf('Fusing results from different ROIs...\n');
 
-%alternatively:
 [units] = unitsfromrois(ROIs);
 
-%Set all unit states to unchecked.
+%Set all unit states to unchecked - necessary to save results
 %1 - unchecked, 2 - mixture, 3 - single, % 4 - delete
 if ~isfield([units],'state')
     [units.state] = deal(1);
 end
-%Based on redundancy - set some unit states to 4:
-% MAKE USE OF REDUNDANTCANDIDATES FROM SPLITMERGE
+
+
+if params.autoremoveRedundantUnits
+    %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+    % Removal of redundantly identified units
+    %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+    fprintf('Removing redundantly identified units...\n');
+    [units.state] = deal(2);
+    data = readdatablock(params.filename,...
+                         1,length(params.sensor_rows),...
+                         1,length(params.sensor_cols),...
+                         1,length(params.frameStartTimes));
+    [numDistinct, sizes, members] = redundantcandidates(units, ROIs, ...
+              params, data, params.d_max, params.coin_thr, params.sim_thr);
+    clear data
+    for i = 1:numDistinct
+        if sizes(i) > 1
+            %keep only the most separable one.
+            markAsDelete = ([units(members{i}).separability] ~= ...
+                                max([units(members{i}).separability]));
+            fprintf('Changing state of unit(s) %g to delete.\n',...
+                    members{i}(markAsDelete));
+            [units(members{i}(markAsDelete)).state] = deal(4);
+        end
+    end
+
+end
 
 %Save changed unit states back to ROIs
 [ROIs] = units2rois(units, ROIs);
