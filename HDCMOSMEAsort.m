@@ -178,9 +178,12 @@ params.minKurtosis = 0;
 params.t_s = 0.5; %ms
 params.t_jitter = 1; %ms
 %redundancy reduction parameters, adjustable in GUI.
-params.d_max = 1000; %maximal distance in \mum for extrema of average waveforms
-params.coin_thr = 0.5; %fraction of coincident spikes
-params.sim_thr = 0.5; %similarity of average waveforms
+%maximal distance in \mum for extrema of average waveforms
+params = setfieldifnotpresent(params,'d_max',params.pitch);
+%fraction of coincident spikes
+params = setfieldifnotpresent(params,'coin_thr',0.5);
+%similarity of average waveforms
+params = setfieldifnotpresent(params,'sim_thr',0.5);
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 
 
