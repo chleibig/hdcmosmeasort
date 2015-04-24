@@ -297,7 +297,7 @@ while iteration_no <= max_iter
             end
             X(cl_i,:) = cicaarprosep(invA0,Atau,X(cl_i,:));
             %compute whitened sources Z:
-            X(cl_i,:) = cicaarwhitensources(Hlambda,X(cl_i,:));
+            %X(cl_i,:) = cicaarwhitensources(Hlambda,X(cl_i,:));
             %X = cicaarprosep(pinv(A(:,:,1)),A(:,:,2:end),X_org);
             %append current cluster to list of touched component
             %combinations:
