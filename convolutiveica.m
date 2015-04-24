@@ -1,6 +1,6 @@
 function [S_cica, A_tau, S_noise, A_noise] = convolutiveica(X,L,A,...
                                           sr,d_row,d_col,N_row,N_col,...
-                                          d_max,frames_ROI,do_cICA,varargin)
+                                          d_max,frames_ROI,varargin)
 %[S_cica, A_tau, S_noise, A_noise] = convolutiveica(X,L,A,...
 %                                         sr,d_row,d_col,N_row,N_col,...
 %                                         d_max,frames_ROI,do_cICA,varargin)
@@ -30,7 +30,7 @@ t_jitter = 1;
 coin_thr = 0.5;
 thrFactor = 5;
 
-do_cICA
+do_cICA = true;
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 % Optional arguments

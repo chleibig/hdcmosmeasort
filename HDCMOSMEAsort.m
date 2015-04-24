@@ -129,15 +129,13 @@ params.ica.renorm = false; %if true renormalize W and S such that only noise
 
                        
 %%%%% convolutive ICA %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-params.do_cICA = false;
 params = setfieldifnotpresent(params,'L',6);
-params.M = 5;
-params.allframes_cica = 1;
-params.min_corr = 0.02;
-params.max_cluster_size = 4;
-params.max_iter = 10;
-%params.maxlags = params.L + params.M;
-params.maxlags = ceil(params.sr);
+params = setfieldifnotpresent(params,'M',5);
+params = setfieldifnotpresent(params,'allframes_cica',1);
+params = setfieldifnotpresent(params,'min_corr',0.02);
+params = setfieldifnotpresent(params,'max_cluster_size',4);
+params = setfieldifnotpresent(params,'max_iter',1);
+params.maxlags = params.L + params.M;
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 
 
@@ -258,7 +256,7 @@ if params.N_SESSIONS > 0
        'of interest performed in %g seconds\n'],nrOfROIs,etime(t2,t1));
     %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
     stopmatlabsessions(multicoreDir);
-    
+    rmdir(multicoreDir);
 else
     %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
     % Actual work is done here
