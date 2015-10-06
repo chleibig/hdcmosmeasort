@@ -81,12 +81,12 @@ end
 
 %%%%% ROI construction %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 params.roi.method = 'cog';
-params.roi.maxSensorsPerEvent = 169;
+params.roi = setfieldifnotpresent(params.roi, 'maxSensorsPerEvent', 169);
 params.roi.minNoEvents = 3 * ... %multiplying factor in Spikes / second
     (params.frameStartTimes(end) - params.frameStartTimes(1))/1000;
 
 params.roi.mergeThr = 0.1;
-params.roi.maxSensorsPerROI = 169;
+params.roi = setfieldifnotpresent(params.roi, 'maxSensorsPerROI', 169);
 
 params.roi.horizon = 2*floor(params.sr);%~1 ms to the left and to the right
 %of detected activity is taken for the temporal ROI
