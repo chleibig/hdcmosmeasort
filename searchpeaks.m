@@ -9,8 +9,6 @@ function [indices, peaks] = searchpeaks(X,thr,L)
 onset_ind = find(diff(X > thr) > 0);
 if isempty(onset_ind); indices = [];peaks = []; return;
 else
-    mask = [true diff(onset_ind) > L];
-    onset_ind = onset_ind(mask);
     indices = zeros(1,length(onset_ind));
     peaks = zeros(1,length(onset_ind));
     X(end:end+L) = 0;%zero padding to allow peaks to occur at the very end
