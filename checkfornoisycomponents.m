@@ -32,8 +32,9 @@ n_peaks = zeros(1,size(X,1));
 for i = 1:size(X,1)
     %Sign is assumed to be corrected previously such that spikes
     %are negative deflections.
-    [indices, peaks] = searchpeaks(-X(i,:),...
-        thrFactor*median(abs(X(i,:))/0.6745),ceil(sr));
+    [peaks, indices] = findpeaks(-X(i,:),...
+        'MinPeakHeight',thrFactor*median(abs(X(i,:))/0.6745));
+
     n_peaks(i) = length(peaks);
 end
 

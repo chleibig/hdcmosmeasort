@@ -54,8 +54,8 @@ for i=1:dims;
     noise_std = median(abs(x)/0.6745);
     %Skewness is assumed to be corrected previously such that spikes
     %are negative deflections.
-    [indices,pos_amplitudes] = searchpeaks(-x,thrFactor*noise_std,...
-        ceil(sr*upsample));
+    [pos_amplitudes, indices] = findpeaks(-x,...
+        'MinPeakHeight',thrFactor*noise_std);
     amplitudes = -1*pos_amplitudes;
     if ~isempty(amplitudes)
         %Get waveforms.
