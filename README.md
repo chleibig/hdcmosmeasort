@@ -33,4 +33,4 @@ If you find this toolbox useful for your work, please cite it as follows:
 
 ### Contact ###
 
-christian.leibig@g-node.org
+leibig.christian@gmail.com
